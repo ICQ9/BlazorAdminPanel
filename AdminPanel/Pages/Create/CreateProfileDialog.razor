@@ -1,20 +1,156 @@
 ﻿@using System.ComponentModel.DataAnnotations
 @using System.IO
+@using AdminPanel.Services
+@using AdminPanel.Shared.Models
+@using System.Net.Http.Headers
+@inject ILocalStorageService LocalStorageService
+@inject HttpClient Http
+
 
 <MudDialog>
     <DialogContent>
-        Dialog Content
+
+        <MudStepper @bind-ActiveIndex="_index" OnPreviewInteraction="OnPreviewInteraction">
+            <MudStep Title="Fill Basic Profile Information">
+
+                <MudForm Model="@newProfile" @ref="@form">
+                    <MudGrid>
+                        <MudItem>
+                            <MudCard>
+                                <MudCardContent>
+                                    <MudTextField Required="true" Label="Profile Name" @bind-Value="@newProfile.Name" />
+                                    <MudDatePicker Required="true" Label="Date From" ShowToolbar="false" @bind-Date="@newProfile.DateFrom" />
+                                    <MudDatePicker Required="true" Label="Date To" ShowToolbar="false" @bind-Date="@newProfile.DateTo" />
+                                </MudCardContent>
+                            </MudCard>
+                        </MudItem>
+                    </MudGrid>
+                </MudForm>
+
+            </MudStep>
+
+
+            <MudStep Title="Link Product to profile">
+                <MudForm Model="@newProfile" @ref="@form">
+                    <MudGrid>
+                        <MudItem>
+                            <MudCard>
+                                <MudCardContent>
+                                    <MudItem xs="12" md="1">
+                                        <MudRadioGroup @bind-Value="@newProfile.ProductFormatId">
+                                            @foreach(var format in productFormats)
+                                            {
+                                                <MudRadio Value="@format.Id">@format.FormatName</MudRadio>
+                                            }
+                                        </MudRadioGroup>
+                                    </MudItem>
+                                </MudCardContent>
+                            </MudCard>
+                        </MudItem>
+                    </MudGrid>
+                </MudForm>
+            </MudStep>
+            <MudStep Title="Create an ad" Disabled="_disabled">Create an ad content</MudStep>
+        </MudStepper>
     </DialogContent>
-    <DialogActions>
+    @* <DialogActions>
         <MudButton OnClick="Cancel">Cancel</MudButton>
         <MudButton Color="Color.Primary" OnClick="Submit">Ok</MudButton>
-    </DialogActions>
+    </DialogActions> *@
 </MudDialog>
 @code {
+    private bool _error;
+    private bool _completed;
+    private bool basicInformationComplete;
+    private bool _disabled;
+
+    MudForm form;
+
+    private SaveProfileModel newProfile = new SaveProfileModel();
+    private List<ProductFormat> productFormats = new List<ProductFormat>();
+
+    private int _index;
     [CascadingParameter] IMudDialogInstance MudDialog { get; set; }
     [Parameter] public string Title { get; set; } = "Create Profile";
 
     private void Submit() => MudDialog.Close(DialogResult.Ok(true));
 
     private void Cancel() => MudDialog.Cancel();
+
+    private async Task OnPreviewInteraction(StepperInteractionEventArgs arg)
+    {
+        //TODO: Using Fulent Validation
+
+        if (arg.Action == StepAction.Complete)
+        {
+            await ControlStepCompletion(arg);
+        }
+    }
+
+    private async Task<int> LoadCampaigns()
+    {
+        var token = await LocalStorageService.GetItemAsync("access_token");
+        if (!string.IsNullOrWhiteSpace(token))
+        {
+            Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        }
+        try
+        {
+            var campaings = await Http.GetFromJsonAsync<List<Campaign>>("/api/campaign/list");
+            return campaings.Select(x=>x.Id).FirstOrDefault();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading campaigns: {ex.Message}");
+            return 0;
+        }
+    }
+
+    private async Task LoadProductFormats(int campaignId)
+    {
+        var token = await LocalStorageService.GetItemAsync("access_token");
+        if (!string.IsNullOrWhiteSpace(token))
+        {
+            Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        }
+
+        try
+        {
+            var response = await Http.GetFromJsonAsync<List<ProductFormatResponse>>($"/api/campaign/{campaignId}/available-product-formats");
+            if (response != null && response.Any())
+            {
+                productFormats = response.FirstOrDefault()?.FormatList ?? new List<ProductFormat>();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading product formats: {ex.Message}");
+        }
+    }
+
+    private async Task ControlStepCompletion(StepperInteractionEventArgs arg)
+    {
+        switch (arg.StepIndex)
+        {
+            case 0:
+                var campaignId = await LoadCampaigns();
+                if (campaignId != 0)
+                {
+                    newProfile.CampaignId = campaignId;
+                    await LoadProductFormats(campaignId);
+                }
+                else
+                {
+                    //TODO: Logic if no campains
+                }
+                break;
+            case 1:
+                // if ((_step2TextInput?.Length ?? 0) == 0)
+                // {
+                //     await DialogService.ShowMessageBox("Error", "You have not entered text in step 2");
+                //     arg.Cancel = true;
+                // }
+                break;
+        }
+    }
 }

@@ -23,12 +23,12 @@ namespace AdminPanel.Shared.Models
         [Required(ErrorMessage = "Start date is required")]
         [Display(Name = "Start Date")]
         [DataType(DataType.Date)]
-        public DateTime DateFrom { get; set; }
+        public DateTime? DateFrom { get; set; }
 
         [Required(ErrorMessage = "End date is required")]
         [Display(Name = "End Date")]
         [DataType(DataType.Date)]
-        public DateTime DateTo { get; set; }
+        public DateTime? DateTo { get; set; }
 
         [Display(Name = "Currency")]
         public string Currency { get; set; } = "USD";

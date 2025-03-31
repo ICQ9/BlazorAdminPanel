@@ -68,8 +68,8 @@
     }
 
     <style>
-        .my-custom-class {
-            backdrop-filter: blur(10px);
+        .backdrop-blur {
+        backdrop-filter: blur(10px);
         }
     </style>
 </div>
@@ -145,6 +145,13 @@
             };
 
         var dialog = await DialogService.ShowAsync<CreateProfileDialog>("Create New Profile", options);
+
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await LoadProfiles();
+        }
     }
 
     private bool SearchProfile(Profile element) => FilterFunc(element, searchProfile);
