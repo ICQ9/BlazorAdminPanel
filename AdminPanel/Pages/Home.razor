@@ -1,0 +1,226 @@
+﻿@page "/"
+@using System.Globalization
+
+
+<PageTitle>Home</PageTitle>
+
+<div class="dashboard-container">
+    <div class="header">
+        <div class="advertiser-info">
+            <div class="advertiser-id">Advertiser ID: @AdvertiserId</div>
+            <div class="balance-container">
+                <span>Balance: @Balance.ToString("C2", new CultureInfo("en-US"))</span>
+                <button class="top-up-btn">Top-up Balance</button>
+            </div>
+        </div>
+        <div class="date-selector">
+            <select @bind="SelectedPeriod">
+                <option value="today">Today</option>
+                <option value="yesterday">Yesterday</option>
+                <option value="last7days">Last 7 Days</option>
+                <option value="last30days">Last 30 Days</option>
+                <option value="thismonth">This Month</option>
+                <option value="lastmonth">Last Month</option>
+                <option value="custom">Custom Period</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="main-dashboard">
+        <div class="content">
+            <h2>Dashboard</h2>
+
+            <div class="metrics-container">
+                <div class="metric-card">
+                    <div class="metric-title">Ad Spend</div>
+                    <div class="metric-value">@AdSpend.ToString("N2")</div>
+                    <div class="metric-change @(AdSpendChange > 0 ? "positive" : "negative")">
+                        <span class="arrow">@(AdSpendChange > 0 ? "▲" : "▼")</span>
+                        <span>@Math.Abs(AdSpendChange).ToString("0.00")%</span>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-title">Clicks</div>
+                    <div class="metric-value">@Clicks.ToString("N0")</div>
+                    <div class="metric-change @(ClicksChange > 0 ? "positive" : "negative")">
+                        <span class="arrow">@(ClicksChange > 0 ? "▲" : "▼")</span>
+                        <span>@Math.Abs(ClicksChange).ToString("0.00")%</span>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-title">CTR %</div>
+                    <div class="metric-value">@Ctr.ToString("0.00")</div>
+                    <div class="metric-change @(CtrChange > 0 ? "positive" : "negative")">
+                        <span class="arrow">@(CtrChange > 0 ? "▲" : "▼")</span>
+                        <span>@Math.Abs(CtrChange).ToString("0.00")%</span>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-title">Sales</div>
+                    <div class="metric-value">@Sales.ToString("N0")</div>
+                    <div class="metric-change @(SalesChange > 0 ? "positive" : "negative")">
+                        <span class="arrow">@(SalesChange > 0 ? "▲" : "▼")</span>
+                        <span>@Math.Abs(SalesChange).ToString("0.00")%</span>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-title">Revenue</div>
+                    <div class="metric-value">@Revenue.ToString("N2")</div>
+                    <div class="metric-change @(RevenueChange > 0 ? "positive" : "negative")">
+                        <span class="arrow">@(RevenueChange > 0 ? "▲" : "▼")</span>
+                        <span>@Math.Abs(RevenueChange).ToString("0.00")%</span>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-title">ROAS %</div>
+                    <div class="metric-value">@Roas.ToString("0.00")</div>
+                    <div class="metric-change @(RoasChange > 0 ? "positive" : "negative")">
+                        <span class="arrow">@(RoasChange > 0 ? "▲" : "▼")</span>
+                        <span>@Math.Abs(RoasChange).ToString("0.00")%</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="campaigns-section">
+                <div class="campaigns-header">
+                    <h3>Active campaigns <span class="expand-icon">▶</span></h3>
+                </div>
+
+                <div class="campaigns-table-container">
+                    <table class="campaigns-table">
+                        <thead>
+                            <tr>
+                                <th>Campaign</th>
+                                <th>Views</th>
+                                <th>Clicks</th>
+                                <th>CTR %</th>
+                                <th>Sales</th>
+                                <th>CR %</th>
+                                <th>Revenue</th>
+                                <th>ROAS %</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var campaign in Campaigns)
+                            {
+                                <tr>
+                                    <td>@campaign.Name</td>
+                                    <td>@campaign.Views.ToString("N0")</td>
+                                    <td>@campaign.Clicks.ToString("N0")</td>
+                                    <td>@campaign.Ctr.ToString("0.0")</td>
+                                    <td>@campaign.Sales.ToString("N0")</td>
+                                    <td>@campaign.ConversionRate.ToString("0.0")</td>
+                                    <td>@campaign.Revenue.ToString("N2")</td>
+                                    <td>@campaign.Roas.ToString("0.0")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+@code {
+    private string AdvertiserId { get; set; } = "ID43456";
+    private decimal Balance { get; set; } = 123.45m;
+    private string SelectedPeriod { get; set; } = "today";
+
+    // Metrics data
+    private decimal AdSpend { get; set; } = 1200.01m;
+    private decimal AdSpendChange { get; set; } = 22.50m;
+
+    private int Clicks { get; set; } = 4321;
+    private decimal ClicksChange { get; set; } = -10.50m;
+
+    private decimal Ctr { get; set; } = 2.25m;
+    private decimal CtrChange { get; set; } = -0.10m;
+
+    private int Sales { get; set; } = 456;
+    private decimal SalesChange { get; set; } = 18.80m;
+
+    private decimal Revenue { get; set; } = 16234.78m;
+    private decimal RevenueChange { get; set; } = 3.60m;
+
+    private decimal Roas { get; set; } = 125.01m;
+    private decimal RoasChange { get; set; } = -4.30m;
+
+    // Campaign data
+    private List<Campaign> Campaigns { get; set; } = new List<Campaign>
+    {
+        new Campaign
+        {
+            Name = "Brand promo",
+            Views = 3000,
+            Clicks = 45,
+            Ctr = 1.5m,
+            Sales = 4,
+            ConversionRate = 8.9m,
+            Revenue = 1234.50m,
+            Roas = 425.70m
+        },
+        new Campaign
+        {
+            Name = "Brand promo 1",
+            Views = 3000,
+            Clicks = 45,
+            Ctr = 1.5m,
+            Sales = 4,
+            ConversionRate = 8.9m,
+            Revenue = 1234.50m,
+            Roas = 425.70m
+        },
+        new Campaign
+        {
+            Name = "Brand promo 2",
+            Views = 3000,
+            Clicks = 45,
+            Ctr = 1.5m,
+            Sales = 4,
+            ConversionRate = 8.9m,
+            Revenue = 1234.50m,
+            Roas = 425.70m
+        },
+        new Campaign
+        {
+            Name = "Brand promo 3",
+            Views = 3000,
+            Clicks = 45,
+            Ctr = 1.5m,
+            Sales = 4,
+            ConversionRate = 8.9m,
+            Revenue = 1234.50m,
+            Roas = 425.70m
+        },
+        new Campaign
+        {
+            Name = "Brand promo 4",
+            Views = 3000,
+            Clicks = 45,
+            Ctr = 1.5m,
+            Sales = 4,
+            ConversionRate = 8.9m,
+            Revenue = 1234.50m,
+            Roas = 425.70m
+        }
+    };
+
+    public class Campaign
+    {
+        public string Name { get; set; }
+        public int Views { get; set; }
+        public int Clicks { get; set; }
+        public decimal Ctr { get; set; }
+        public int Sales { get; set; }
+        public decimal ConversionRate { get; set; }
+        public decimal Revenue { get; set; }
+        public decimal Roas { get; set; }
+    }
+}

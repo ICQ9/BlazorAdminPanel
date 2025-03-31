@@ -1,0 +1,169 @@
+@using AdminPanel.Services
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Net.Http.Headers
+@using AdminPanel.Shared.Models
+@inject HttpClient Http
+@inject ILocalStorageService LocalStorageService
+@inject NavigationManager Navigation
+
+<div class="create-campaign-container">
+    <div class="create-campaign-card">
+        <div class="card-header">
+            <h3>Create New Campaign</h3>
+            <p class="subtitle">Fill in the campaign details below</p>
+        </div>
+
+        <div class="card-body">
+            <EditForm Model="@newCampaign" OnValidSubmit="HandleValidSubmit">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+
+                <div class="form-section">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="name">Campaign Name</label>
+                            <InputText id="name" @bind-Value="newCampaign.Name" class="form-control" placeholder="Enter campaign name" />
+                            <ValidationMessage For="@(() => newCampaign.Name)" />
+                        </div>
+
+                        <div class="form-group">
+                            <label for="budget">Campaign Budget (USD)</label>
+                            <InputNumber id="budget" @bind-Value="newCampaign.Budget" class="form-control" placeholder="Enter budget amount" />
+                            <ValidationMessage For="@(() => newCampaign.Budget)" />
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Campaign Type</label>
+                        <InputSelect @bind-Value="newCampaign.Type" class="form-control">
+                            <option value="@CampaignType.ProductListing">Product Listing</option>
+                            <option value="@CampaignType.ProductSearch">Product Search Banner</option>
+                            <option value="@CampaignType.Banner">Banner</option>
+                        </InputSelect>
+                        <ValidationMessage For="@(() => newCampaign.Type)" />
+                    </div>
+
+                    <div class="form-group">
+                        <label>Advertiser</label>
+                        <InputSelect @bind-Value="newCampaign.AdvertiserId" class="form-control">
+                            @if (advertisers != null)
+                            {
+                                <option value="">Select...</option>
+                                @foreach (var advertiser in advertisers)
+                                {
+                                    <option value="@advertiser.Id">@advertiser.Name</option>
+                                }
+                            }
+                        </InputSelect>
+                        <ValidationMessage For="@(() => newCampaign.AdvertiserId)" />
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="dateFrom">Date From</label>
+                            <InputDate id="dateFrom" @bind-Value="newCampaign.DateFrom" class="form-control" format="dd/MM/yyyy" />
+                            <ValidationMessage For="@(() => newCampaign.DateFrom)" />
+                            @if (!newCampaign.IsDateRangeValid())
+                            {
+                                <div class="validation-message">@newCampaign.GetDateRangeErrorMessage()</div>
+                            }
+                        </div>
+
+                        <div class="form-group">
+                            <label for="dateTo">Date To</label>
+                            <InputDate id="dateTo" @bind-Value="newCampaign.DateTo" class="form-control" format="dd/MM/yyyy" />
+                            <ValidationMessage For="@(() => newCampaign.DateTo)" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary" disabled="@(!newCampaign.IsDateRangeValid())">
+                        <span class="btn-icon">✓</span>
+                        Create Campaign
+                    </button>
+                    <button type="button" class="btn btn-secondary" @onclick="Cancel">
+                        <span class="btn-icon">×</span>
+                        Cancel
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+</div>
+
+@code {
+    private SaveCampaignModel newCampaign = new();
+
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public EventCallback OnCampaignCreated { get; set; }
+
+    private List<Advertiser> advertisers;
+
+    protected override async Task OnInitializedAsync()
+    {
+
+        var token = await GetToken();
+        if (!string.IsNullOrWhiteSpace(token))
+        {
+            Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        }
+
+        advertisers = await GetAdvertisers(token);
+
+        newCampaign.DateFrom = DateTime.Today;
+        newCampaign.DateTo = DateTime.Today.AddMonths(1);
+        newCampaign.State = "ReadyReady";
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        if (!newCampaign.IsDateRangeValid())
+        {
+            return;
+        }
+
+        var token = await LocalStorageService.GetItemAsync("access_token");
+        if (!string.IsNullOrWhiteSpace(token))
+        {
+            Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        }
+
+        try
+        {
+            var response = await Http.PostAsJsonAsync("/api/campaign", newCampaign);
+            if (response.IsSuccessStatusCode)
+            {
+                // Notify parent component that campaign was created
+                await OnCampaignCreated.InvokeAsync();
+            }
+            else
+            {
+                // Handle error response
+                var error = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"Error creating campaign: {error}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error creating campaign: {ex.Message}");
+        }
+    }
+
+    private async Task Cancel()
+    {
+        await OnCancel.InvokeAsync();
+    }
+
+    private async Task<string> GetToken()
+    {
+        return await LocalStorageService.GetItemAsync("access_token");
+
+    }
+
+    private async Task<List<Advertiser>> GetAdvertisers(string token)
+    {
+        return await Http.GetFromJsonAsync<List<Advertiser>>("api/advertiser/list");
+
+    }
+}

@@ -1,0 +1,95 @@
+﻿@page "/login"
+@using System.Net.Http.Headers
+@using System.Net.Http.Json
+@using AdminPanel.Services
+@using Microsoft.AspNetCore.Components.Authorization
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
+
+<h3>Вход в систему</h3>
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger">@errorMessage</div>
+}
+
+<EditForm Model="loginModel" OnValidSubmit="HandleLogin">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="form-group">
+        <label>Имя пользователя:</label>
+        <InputText class="form-control" @bind-Value="loginModel.Username" />
+    </div>
+    <div class="form-group">
+        <label>Пароль:</label>
+        <InputText type="password" class="form-control" @bind-Value="loginModel.Password" />
+    </div>
+    <button type="submit" class="btn btn-primary">Войти</button>
+</EditForm>
+
+@code {
+    private LoginModel loginModel = new LoginModel();
+    private string errorMessage;
+
+    private async Task HandleLogin()
+    {
+        try
+        {
+            // Подготовка данных формы для запроса токена
+            var formData = new List<KeyValuePair<string, string>>
+            {
+                new KeyValuePair<string, string>("grant_type", "password"),
+                new KeyValuePair<string, string>("client_id", "UI"), // Укажите client_id, если требуется
+                new KeyValuePair<string, string>("username", loginModel.Username),
+                new KeyValuePair<string, string>("password", loginModel.Password)
+                // При необходимости добавьте client_secret, scope и другие поля
+            };
+
+            var content = new FormUrlEncodedContent(formData);
+
+            // Отправляем POST-запрос на внешний Identity-сервер
+            var response = await Http.PostAsync("https://identity.stacksandbox.com/connect/token", content);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<TokenResponse>();
+                if (result != null && !string.IsNullOrEmpty(result.access_token))
+                {
+                    await ((ApiAuthenticationStateProvider)AuthStateProvider).MarkUserAsAuthenticated(result.access_token);
+                    Navigation.NavigateTo("/");
+                }
+                else
+                {
+                    errorMessage = "Ошибка получения токена.";
+                }
+            }
+            else
+            {
+                errorMessage = "Неверные учетные данные или ошибка сервера.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
+
+    public class LoginModel
+    {
+        public string Username { get; set; }
+        public string Password { get; set; }
+    }
+
+    // Модель, соответствующая JSON-ответу от Identity-сервера
+    public class TokenResponse
+    {
+        public string access_token { get; set; }
+        public int expires_in { get; set; }
+        public string token_type { get; set; }
+        public string refresh_token { get; set; }
+        public int user_id { get; set; }
+        public string subscription_oid { get; set; }
+        public string secret_owner { get; set; }
+    }
+}

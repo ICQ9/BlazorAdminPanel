@@ -1,0 +1,138 @@
+﻿@page "/products"
+@using AdminPanel.Services
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Net.Http.Headers
+@using AdminPanel.Shared.Models
+@inject HttpClient Http
+@inject ILocalStorageService LocalStorageService
+@inject NavigationManager Navigation
+
+<div class="products-container">
+    <div class="header">
+        <h3>Products</h3>
+        <button class="btn btn-primary" @onclick="ShowCreateForm">Create Product</button>
+    </div>
+
+    @if (products == null)
+    {
+        <p>Loading...</p>
+    }
+    else
+    {
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var product in products)
+                {
+                    <tr>
+                        <td>@product.Id</td>
+                        <td>@product.Name</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
+
+@if (showCreateForm)
+{
+    <div class="create-form-overlay">
+        <CreateCampaign OnCancel="HideCreateForm" OnCampaignCreated="HandleCampaignCreated" />
+    </div>
+}
+
+@code {
+    bool showCreateForm;
+    private List<Product> products;
+    private SaveProductModel newProduct = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        LoadProducts();
+    }
+
+    private async Task LoadProducts()
+    {
+        // Get token from LocalStorage
+        var token = await LocalStorageService.GetItemAsync("access_token");
+        if (!string.IsNullOrWhiteSpace(token))
+        {
+            // Set authorization header
+            Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        }
+
+        // Fetch campaigns from API
+        try
+        {
+            products = await Http.GetFromJsonAsync<List<Product>>("/api/product/list");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading campaigns: {ex.Message}");
+            products = new List<Product>(); // Initialize empty list on error
+        }
+    }
+
+    private void NavigateToCreateCampaign()
+    {
+        Navigation.NavigateTo("/campaigns/create");
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        if (!newProduct.IsDateRangeValid())
+        {
+            return;
+        }
+
+        var token = await LocalStorageService.GetItemAsync("access_token");
+        if (!string.IsNullOrWhiteSpace(token))
+        {
+            Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        }
+
+        try
+        {
+            var response = await Http.PostAsJsonAsync("/api/campaign/create", newProduct);
+            if (response.IsSuccessStatusCode)
+            {
+                Navigation.NavigateTo("/campaigns");
+            }
+            else
+            {
+                // Handle error response
+                var error = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"Error creating campaign: {error}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error creating campaign: {ex.Message}");
+        }
+    }
+
+    private void ShowCreateForm()
+    {
+        showCreateForm = true;
+    }
+
+    private void HideCreateForm()
+    {
+        showCreateForm = false;
+    }
+
+    private async Task HandleCampaignCreated()
+    {
+        // Hide the form
+        showCreateForm = false;
+
+        // Reload the campaigns list
+        await LoadProducts();
+    }
+
+}

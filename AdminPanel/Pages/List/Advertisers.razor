@@ -1,0 +1,58 @@
+﻿@page "/advertisers"
+@using AdminPanel.Services
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Net.Http.Headers
+@inject HttpClient Http
+@inject ILocalStorageService LocalStorageService
+
+
+
+<div class="advertisers-container">
+    <div class="header">
+        <h3>Advertisers</h3>
+    </div>
+
+    @if (advertisers == null)
+    {
+        <p>Loading...</p>
+    }
+    else
+    {
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var advertiser in advertisers)
+                {
+                    <tr>
+                        <td>@advertiser.Id</td>
+                        <td>@advertiser.Name</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
+
+@code {
+    private List<AdminPanel.Shared.Models.Advertiser> advertisers;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Получаем токен из LocalStorage
+        var token = await LocalStorageService.GetItemAsync("access_token");
+        if (!string.IsNullOrWhiteSpace(token))
+        {
+            // Устанавливаем заголовок авторизации
+            Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        }
+
+        // Выполняем запрос к внешнему API, где требуется авторизация
+        advertisers = await Http.GetFromJsonAsync<List<AdminPanel.Shared.Models.Advertiser>>("api/advertiser/list");
+    }
+}
+

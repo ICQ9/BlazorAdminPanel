@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.13.35818.85
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AdminPanel", "AdminPanel\AdminPanel.csproj", "{7FD037A0-69C2-429D-AAAC-0AB4C206BB23}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AdminPanel.Shared", "AdminPanel.Shared\AdminPanel.Shared.csproj", "{D656AF28-1164-4744-8539-3A5FECD077DC}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7FD037A0-69C2-429D-AAAC-0AB4C206BB23}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7FD037A0-69C2-429D-AAAC-0AB4C206BB23}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7FD037A0-69C2-429D-AAAC-0AB4C206BB23}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7FD037A0-69C2-429D-AAAC-0AB4C206BB23}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D656AF28-1164-4744-8539-3A5FECD077DC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D656AF28-1164-4744-8539-3A5FECD077DC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D656AF28-1164-4744-8539-3A5FECD077DC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D656AF28-1164-4744-8539-3A5FECD077DC}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {29ACC7F9-320B-4BEF-AD5A-DAF39E390E69}
+	EndGlobalSection
+EndGlobal

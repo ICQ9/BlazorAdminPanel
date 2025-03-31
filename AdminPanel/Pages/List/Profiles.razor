@@ -1,0 +1,160 @@
+﻿@page "/profiles"
+@using AdminPanel.Services
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Net.Http.Headers
+@using AdminPanel.Shared.Models
+@using AdminPanel.Pages.Create
+@inject HttpClient Http
+@inject ILocalStorageService LocalStorageService
+@inject NavigationManager Navigation
+@inject IDialogService DialogService
+
+<div class="profiles-container">
+    <div class="header">
+        <h3>Profiles</h3>
+        <MudButton @onclick="OpenDialogAsync" Variant="Variant.Filled" Color="Color.Primary">
+            Create Profile
+        </MudButton>
+    </div>
+
+    <MudTable Items="profiles" Hover="true" Loading="@_loading" LoadingProgressColor="Color.Info" Filter="new Func<Profile,bool>(SearchProfile)" @bind-SelectedItem="selectedProfile">
+        <ToolBarContent>
+            <MudText Typo="Typo.h6">Profiles List</MudText>
+            <MudSpacer></MudSpacer>
+            <MudTextField @bind-Value="searchProfile" Placeholder="Search" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
+        </ToolBarContent>
+        <HeaderContent>
+            <MudTh>State</MudTh>
+            <MudTh>Id</MudTh>
+            <MudTh>Name</MudTh>
+            <MudTh>Events Plan</MudTh>
+            <MudTh>Date From</MudTh>
+            <MudTh>Date To</MudTh>
+            <MudTh>Events</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="State">
+                @if (context.State == "Active")
+                {
+                    <MudIcon Icon="@Icons.Material.Filled.Circle" Color="Color.Success" />
+                }
+                else
+                {
+
+                    <MudIcon Icon="@Icons.Material.Filled.Circle" Color="Color.Error" />
+                }
+            </MudTd>
+            <MudTd DataLabel="Id">@context.Id</MudTd>
+            <MudTd DataLabel="Name">@context.Name</MudTd>
+            <MudTd DataLabel="Event Plan">@context.EventsPlan</MudTd>
+            <MudTd DataLabel="Date From">@context.DateFrom.ToShortDateString()</MudTd>
+            <MudTd DataLabel="Date To">@context.DateTo.ToShortDateString()</MudTd>
+            <MudTd DataLabel="Events">
+                <MudMenu Icon="@Icons.Material.Filled.MoreVert" AnchorOrigin="Origin.CenterRight" TransformOrigin="Origin.TopLeft">
+                    <MudMenuItem Label="Edit" OnClick="@(()=>EditProfile(context.Id))" />
+                    <MudMenuItem Label="Active" />
+                    <MudMenuItem Label="Stop" />
+                </MudMenu>
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+
+
+    @if (showCreateForm)
+    {
+        <div class="create-form-overlay">
+            <CreateProfile OnCancel="HideCreateForm" OnProfileCreated="HandleProfileCreated" />
+        </div>
+    }
+
+    <style>
+        .my-custom-class {
+            backdrop-filter: blur(10px);
+        }
+    </style>
+</div>
+
+@code {
+    private bool _loading = true;
+    private string searchProfile;
+    private bool showCreateForm = false;
+    private List<Profile> profiles = new List<Profile>();
+    private Profile selectedProfile = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProfiles();
+    }
+
+    private async Task LoadProfiles()
+    {
+        var token = await LocalStorageService.GetItemAsync("access_token");
+        if (!string.IsNullOrWhiteSpace(token))
+        {
+            Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        }
+
+        try
+        {
+            var res = await Http.GetFromJsonAsync<List<Profile>>("/api/profile/list");
+            profiles = res.Where(x => x.State == "Active").ToList();
+            _loading = false;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading profiles: {ex.Message}");
+            _loading = false;
+        }
+    }
+
+    private void ShowCreateForm()
+    {
+        Navigation.NavigateTo("profiles/create");
+    }
+
+    private void HideCreateForm()
+    {
+        showCreateForm = false;
+    }
+
+    private async Task HandleProfileCreated()
+    {
+        // Hide the form
+        showCreateForm = false;
+
+        // Reload the profiles list
+        await LoadProfiles();
+    }
+
+    private void EditProfile(int ProfileId)
+    {
+        Navigation.NavigateTo($"profile/{ProfileId}/edit");
+    }
+
+    private async Task OpenDialogAsync()
+    {
+        var options = new DialogOptions
+            {
+                CloseOnEscapeKey = true,
+                MaxWidth = MaxWidth.Large,
+                FullWidth = true,
+                CloseButton = true,
+                BackdropClick = false,
+                Position = DialogPosition.Center,
+                BackgroundClass = "backdrop-blur"
+            };
+
+        var dialog = await DialogService.ShowAsync<CreateProfileDialog>("Create New Profile", options);
+    }
+
+    private bool SearchProfile(Profile element) => FilterFunc(element, searchProfile);
+
+    private bool FilterFunc(Profile element, string searchString)
+    {
+        if (string.IsNullOrWhiteSpace(searchString))
+            return true;
+        if (element.Name.Contains(searchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+        return false;
+    }
+}

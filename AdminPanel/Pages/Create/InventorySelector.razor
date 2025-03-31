@@ -1,0 +1,6 @@
+﻿<h3>InventorySelector</h3>
+
+@code {
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public EventCallback<int> OnInventorySelected{ get; set; }
+}

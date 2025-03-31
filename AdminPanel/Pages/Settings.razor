@@ -1,0 +1,28 @@
+﻿@page "/settings"
+
+<div class="settings-container">
+    <h1>Settings</h1>
+
+    <div>
+        <label>Тема:</label>
+        <select @bind="selectedTheme">
+            <option value="light">Світла</option>
+            <option value="dark">Темна</option>
+        </select>
+    </div>
+</div>
+
+@code {
+    private string selectedTheme = "light";
+
+    protected override void OnInitialized()
+    {
+        // Отримати тему з локального сховища або налаштувань користувача
+    }
+
+    private void ChangeTheme()
+    {
+        // Змінити тему в додатку
+        // Зберегти вибір теми в локальне сховище або налаштування користувача
+    }
+}
