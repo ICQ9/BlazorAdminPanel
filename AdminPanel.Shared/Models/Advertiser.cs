@@ -10,5 +10,7 @@ namespace AdminPanel.Shared.Models
     {
         public int Id { get; set; }
         public string Name { get; set; }
+        public string BrandName { get; set; }
+        public string AdvertiserUrl { get; set; }
     }
 }

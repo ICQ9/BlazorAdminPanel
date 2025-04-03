@@ -2,8 +2,12 @@
 @using System.IO
 @using AdminPanel.Services
 @using AdminPanel.Shared.Models
+@using AdminPanel.Pages.Components
 @using System.Net.Http.Headers
-@inject ILocalStorageService LocalStorageService
+@using FluentValidation
+@inject ISnackbar Snackbar
+@inject ILoadEntityService LoadEntityService
+@inject IDialogService DialogService
 @inject HttpClient Http
 
 
@@ -21,6 +25,29 @@
                                     <MudTextField Required="true" Label="Profile Name" @bind-Value="@newProfile.Name" />
                                     <MudDatePicker Required="true" Label="Date From" ShowToolbar="false" @bind-Date="@newProfile.DateFrom" />
                                     <MudDatePicker Required="true" Label="Date To" ShowToolbar="false" @bind-Date="@newProfile.DateTo" />
+
+                                    <MudStack>
+                                        <MudText>Budget Limit Type</MudText>
+                                        <MudToggleGroup T="string" SelectionMode="SelectionMode.SingleSelection" @bind-Value="newProfile.BudgetRestrictionType" Color="Color.Inherit" CheckMark>
+                                            <MudToggleItem Value="@("Unlim")" Text="Umlim"/>
+                                            <MudToggleItem Value="@("Profile")" Text="Profile" />
+                                            <MudToggleItem Value="@("Daily")" Text="Daily" />
+                                        </MudToggleGroup>
+                                        @if (newProfile.BudgetRestrictionType != "Unlim")
+                                        {
+                                            <MudItem xs="12" sm="6" md="4">
+                                                <MudTextField @bind-Value="newProfile.BudgetLimit" Label="Limit" Variant="Variant.Text" HelperText="Please enter value >0.01 and <1 billion"></MudTextField>
+                                            </MudItem>
+                                        }
+                                    </MudStack>
+
+                                    <MudStack>
+                                        <MudText>Impression Distribution</MudText>
+                                        <MudToggleGroup T="string" SelectionMode="SelectionMode.SingleSelection" @bind-Value="newProfile.DeliveryDistribution" Color="Color.Inherit" CheckMark>
+                                            <MudToggleItem Value="@("ASAP")" Text="ASAP" />
+                                            <MudToggleItem Value="@("EvenlyPerDay")" Text="Evenly" />
+                                        </MudToggleGroup>
+                                    </MudStack>
                                 </MudCardContent>
                             </MudCard>
                         </MudItem>
@@ -34,24 +61,93 @@
                 <MudForm Model="@newProfile" @ref="@form">
                     <MudGrid>
                         <MudItem>
-                            <MudCard>
-                                <MudCardContent>
-                                    <MudItem xs="12" md="1">
-                                        <MudRadioGroup @bind-Value="@newProfile.ProductFormatId">
-                                            @foreach(var format in productFormats)
-                                            {
-                                                <MudRadio Value="@format.Id">@format.FormatName</MudRadio>
-                                            }
-                                        </MudRadioGroup>
-                                    </MudItem>
-                                </MudCardContent>
-                            </MudCard>
+                            <MudTable @ref="_table" Items="productFormats">
+                                <HeaderContent>
+                                    <MudTh>Select</MudTh>
+                                    <MudTh>Name</MudTh>
+                                    <MudTh>Price Model</MudTh>
+                                </HeaderContent>
+                                <RowTemplate>
+                                    <MudRadioGroup @bind-Value="newProfile.ProductFormatId"><MudRadio Value="@context.Id" Size="Size.Small"></MudRadio></MudRadioGroup>
+                                    <MudTd DataLabel="Name">@context.FormatName</MudTd>
+                                    <MudTd DataLabel="Position">@context.PriceModel</MudTd>
+                                </RowTemplate>
+                            </MudTable>
                         </MudItem>
                     </MudGrid>
                 </MudForm>
             </MudStep>
-            <MudStep Title="Create an ad" Disabled="_disabled">Create an ad content</MudStep>
+            <MudStep Title="Create an ad" Disabled="_disabled">
+                @if (newProfile.IsTeaserProfile){
+                    <MudForm Model="@newProfile" @ref="@form">
+                        <MudGrid>
+                            <MudItem>
+                                <MudTable @ref="_tableFeed" Items="productFeedItems" MultiSelection="true" @bind-SelectedItems="selectedFeedItem">
+                                    <ToolBarContent>
+                                        <MudText Typo="Typo.h6">Select Products</MudText>
+                                        <MudSpacer />
+                                        @*<MudTextField @bind-Value="searchString1" Placeholder="Search" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>*@
+                                    </ToolBarContent>
+                                    <HeaderContent>
+                                        <MudTh>Preview</MudTh>
+                                        <MudTh>Name</MudTh>
+                                        <MudTh>Brand</MudTh>
+                                        <MudTh>Description</MudTh>
+                                    </HeaderContent>
+                                    <RowTemplate>
+                                        <MudTd DataLabel="Preview"><MudImage Width="50" Height="50" Src="@context.Preview"></MudImage></MudTd>
+                                        <MudTd DataLabel="Name">@context.Title</MudTd>
+                                        <MudTd DataLabel="Brand">@context.Brand</MudTd>
+                                        <MudTd DataLabel="Description">@context.Description</MudTd>
+                                    </RowTemplate>
+                                    <PagerContent>
+                                        <MudTablePager />
+                                    </PagerContent>
+                                </MudTable>
+                            </MudItem>
+                        </MudGrid>
+                    </MudForm>
+                } else
+                {
+                    <MudForm Model="@newCreative" @ref="@form">
+                        <MudTextField Required="true" Label="Name" @bind-Value="@newCreative.Name" />
+                        <MudTextField Required="true" Label="Tracking Url" @bind-Value="@newCreative.TrackingUrl" />
+                        <MudTextField Required="true" Label="Brand Name" @bind-Value="@newCreative.BrandName" />
+                        <DragAndDropComponent OnFormDataGenerated="OnFormDataGenerated" />
+                    </MudForm>
+                }
+
+            </MudStep>
+
+
+            <MudStep Title="Setup Price" Disabled="_disabled">
+                <MudPaper Class="pa-4 my-4" Elevation="0" Outlined="true">
+                    <MudGrid>
+                        <MudItem xs="6">
+                            <div class="d-flex align-center">
+                                <MudText Class="ml-1">Event Price</MudText>
+                                <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Class="ml-1" />
+                            </div>
+                            <MudTextField T="decimal"
+                            Value="@newProfile.EventPrice"
+                            ValueChanged="@((decimal val) => newProfile.EventPrice = val)"
+                            Margin="Margin.Dense"
+                            Class="mt-1 ml-6" />
+                        </MudItem>
+                        <MudItem xs="6" Class="d-flex align-center justify-end">
+                            <div>
+                                <MudText Class="mb-1 text-center">Recoomended Price</MudText>
+                                <MudText Color="Color.Warning" Class="text-center">@newProfile.EventPrice USD</MudText>
+                            </div>
+                            <MudText Typo="Typo.h5" Class="mx-4">≥</MudText>
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+            </MudStep>
         </MudStepper>
+        <MudStep>
+
+        </MudStep>
     </DialogContent>
     @* <DialogActions>
         <MudButton OnClick="Cancel">Cancel</MudButton>
@@ -63,11 +159,25 @@
     private bool _completed;
     private bool basicInformationComplete;
     private bool _disabled;
+    private string token;
+    private string imagePreview;
 
     MudForm form;
+    MudTable<ProductFormat> _table;
+    MudTable<ProductFeedItem> _tableFeed;
 
-    private SaveProfileModel newProfile = new SaveProfileModel();
     private List<ProductFormat> productFormats = new List<ProductFormat>();
+    private IEnumerable<ProductFeed> productFeeds;
+    private IEnumerable<ProductFeedItem> productFeedItems;
+
+    private FileFormData uploadFileFormData;
+    private SaveProfileModel newProfile = new SaveProfileModel();
+    private SaveCreativeModel newCreative = new SaveCreativeModel();
+    private ProductFormat selectedItem = new ProductFormat();
+    private Campaign selectedCampaign = new Campaign();
+    private Advertiser selectedAdvertiser = new Advertiser();
+    private HashSet<ProductFeedItem> selectedFeedItem = new HashSet<ProductFeedItem>();
+    private int creativeId;
 
     private int _index;
     [CascadingParameter] IMudDialogInstance MudDialog { get; set; }
@@ -87,17 +197,18 @@
         }
     }
 
-    private async Task<int> LoadCampaigns()
+    protected override async Task OnInitializedAsync()
     {
-        var token = await LocalStorageService.GetItemAsync("access_token");
-        if (!string.IsNullOrWhiteSpace(token))
-        {
-            Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        }
+
+    }
+
+    private async Task<int> GetCampaignId()
+    {  
         try
         {
-            var campaings = await Http.GetFromJsonAsync<List<Campaign>>("/api/campaign/list");
-            return campaings.Select(x=>x.Id).FirstOrDefault();
+            var campaings = await LoadEntityService.LoadCampaigns();
+            selectedCampaign = campaings.FirstOrDefault();
+            return selectedCampaign.Id;
         }
         catch (Exception ex)
         {
@@ -107,20 +218,10 @@
     }
 
     private async Task LoadProductFormats(int campaignId)
-    {
-        var token = await LocalStorageService.GetItemAsync("access_token");
-        if (!string.IsNullOrWhiteSpace(token))
-        {
-            Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        }
-
+    {       
         try
         {
-            var response = await Http.GetFromJsonAsync<List<ProductFormatResponse>>($"/api/campaign/{campaignId}/available-product-formats");
-            if (response != null && response.Any())
-            {
-                productFormats = response.FirstOrDefault()?.FormatList ?? new List<ProductFormat>();
-            }
+            productFormats = (await LoadEntityService.LoadProductFormat(campaignId)).FirstOrDefault().FormatList ?? new List<ProductFormat>();
         }
         catch (Exception ex)
         {
@@ -128,16 +229,22 @@
         }
     }
 
+    private async Task LoadAdvertiserById(int advId)
+    {
+        selectedAdvertiser = (await LoadEntityService.LoadAdvertiserById(advId));
+    }
+
     private async Task ControlStepCompletion(StepperInteractionEventArgs arg)
     {
         switch (arg.StepIndex)
         {
             case 0:
-                var campaignId = await LoadCampaigns();
+                var campaignId = await GetCampaignId();
                 if (campaignId != 0)
                 {
                     newProfile.CampaignId = campaignId;
                     await LoadProductFormats(campaignId);
+                    await LoadAdvertiserById(selectedCampaign.AdvertiserId);
                 }
                 else
                 {
@@ -145,12 +252,83 @@
                 }
                 break;
             case 1:
-                // if ((_step2TextInput?.Length ?? 0) == 0)
-                // {
-                //     await DialogService.ShowMessageBox("Error", "You have not entered text in step 2");
-                //     arg.Cancel = true;
-                // }
+
+                await SetupProductFormatToProfile(newProfile.ProductFormatId);
+                if (newProfile.IsTeaserProfile)
+                {
+                    await LoadProductFeeds();
+                    await LoadProductFeedsItems();
+                }
+                break;
+            case 2:
+                var (result,eror) = await SetupCreative();
+                if (!result)
+                {
+                    await DialogService.ShowMessageBox("Error", eror);
+                    arg.Cancel = true;
+                }
                 break;
         }
+    }
+
+    private async Task<(bool,string)> SetupCreative()
+    {
+        if (newProfile.IsTeaserProfile)
+        {
+            return (true,"");
+        } else
+        {
+            newCreative.AdvertiserId = selectedAdvertiser.Id;
+            newCreative.AdvertiserUrl = $"htps://{selectedAdvertiser.AdvertiserUrl}";
+            newCreative.State = "Active";
+            newCreative.TemplateId = 1;
+            newCreative.LandingPageType = "Web";
+
+            var result = await LoadEntityService.SaveCreative(newCreative);
+            if (!result.IsSuccessStatusCode) {
+                return (false,result.ReasonPhrase);
+            }
+            return (true,"");
+        }
+    }
+
+    private async Task LoadRecomendedPrice()
+    {
+        var filters = new Filters()
+        {
+            ProductFormatId = newProfile.ProductFormatId,
+                DspId = selectedCampaign.AdvertiserId,
+            Currency = newProfile.Currency,
+            DateFrom = DateTime.Now.AddDays(-7),
+            DateTo = DateTime.Today,
+            MaxViewability = 100,
+        };
+
+        var body = new RecomendedPrice() { Filters = filters };
+
+        var response = await Http.PostAsJsonAsync($"api/product-format/stats/simple-bidder/cpm", body);
+    }
+
+    private async Task LoadProductFeeds()
+    {
+        productFeeds = await LoadEntityService.LoadProductFeed(selectedCampaign.AdvertiserId);
+    }
+
+    private async Task SetupProductFormatToProfile(int productFormatId)
+    {
+        var selectedProductFormat = productFormats.Where(x => x.Id == productFormatId).FirstOrDefault();
+        newProfile.AuctionType = selectedProductFormat.AuctionTypes.FirstOrDefault();
+        newProfile.IsTeaserProfile = selectedProductFormat.InventoryTypes.FirstOrDefault() == "Product Listing";
+    }
+
+    private async Task LoadProductFeedsItems()
+    {
+        productFeedItems = await LoadEntityService.LoadProductFeedItems(productFeeds.FirstOrDefault().Id);
+    }
+
+    private void OnFormDataGenerated(List<FileFormData> formData)
+    {
+        uploadFileFormData = formData.FirstOrDefault();
+        uploadFileFormData.CreativeId = creativeId;
     }
 }

@@ -6,26 +6,18 @@ using System.Threading.Tasks;
 
 namespace AdminPanel.Shared.Models
 {
-    public class Campaign
+    public class ProductFeed
     {
         public int Id { get; set; }
         public string Name { get; set; }
-
         public string State { get; set; }
-
-        public string StartDate { get; set; }
-        public string EndDate { get; set; }
-
-        public string DailyBudgetLimit { get; set; }
-
-        public int TradedeskId { get; set; }
+        public int ClientId { get; set; }
+        public Guid AdvertiserOId { get; set; }
         public int AdvertiserId { get; set; }
-
-        public string AdvertiserOid { get; set; }
-
+        public string Settings { get; set; }
+        public int TradeDeskId { get; set; }
         public string Currency { get; set; }
-
-        public string TimeZone { get;set; }
-
+        public string TimeZone { get; set; }
+        public int ItemsCount { get; set; }
     }
 }

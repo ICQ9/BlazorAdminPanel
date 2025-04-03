@@ -1,9 +1,9 @@
 ﻿@page "/advertisers"
 @using AdminPanel.Services
+@using AdminPanel.Shared.Models
 @using Microsoft.AspNetCore.Components.Authorization
 @using System.Net.Http.Headers
-@inject HttpClient Http
-@inject ILocalStorageService LocalStorageService
+@inject ILoadEntityService LoadEntityService
 
 
 
@@ -39,20 +39,11 @@
 </div>
 
 @code {
-    private List<AdminPanel.Shared.Models.Advertiser> advertisers;
+    private IEnumerable<Advertiser> advertisers;
 
     protected override async Task OnInitializedAsync()
     {
-        // Получаем токен из LocalStorage
-        var token = await LocalStorageService.GetItemAsync("access_token");
-        if (!string.IsNullOrWhiteSpace(token))
-        {
-            // Устанавливаем заголовок авторизации
-            Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        }
-
-        // Выполняем запрос к внешнему API, где требуется авторизация
-        advertisers = await Http.GetFromJsonAsync<List<AdminPanel.Shared.Models.Advertiser>>("api/advertiser/list");
+        advertisers = await LoadEntityService.LoadAdvertisers();
     }
 }
 

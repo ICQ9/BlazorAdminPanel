@@ -5,9 +5,9 @@
 @using AdminPanel.Shared.Models
 @using AdminPanel.Pages.Create
 @inject HttpClient Http
-@inject ILocalStorageService LocalStorageService
 @inject NavigationManager Navigation
 @inject IDialogService DialogService
+@inject ILoadEntityService LoadEntityService
 
 <div class="profiles-container">
     <div class="header">
@@ -83,28 +83,9 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadProfiles();
-    }
+        profiles = (await LoadEntityService.LoadProfiles()).ToList();
+        _loading = false;
 
-    private async Task LoadProfiles()
-    {
-        var token = await LocalStorageService.GetItemAsync("access_token");
-        if (!string.IsNullOrWhiteSpace(token))
-        {
-            Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        }
-
-        try
-        {
-            var res = await Http.GetFromJsonAsync<List<Profile>>("/api/profile/list");
-            profiles = res.Where(x => x.State == "Active").ToList();
-            _loading = false;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error loading profiles: {ex.Message}");
-            _loading = false;
-        }
     }
 
     private void ShowCreateForm()
@@ -119,11 +100,13 @@
 
     private async Task HandleProfileCreated()
     {
+        _loading = true;
         // Hide the form
         showCreateForm = false;
 
         // Reload the profiles list
-        await LoadProfiles();
+        profiles = (await LoadEntityService.LoadProfiles()).ToList();
+        _loading = false;
     }
 
     private void EditProfile(int ProfileId)
@@ -150,7 +133,7 @@
 
         if (!result.Canceled)
         {
-            await LoadProfiles();
+            profiles = (await LoadEntityService.LoadProfiles()).ToList();
         }
     }
 

@@ -8,6 +8,8 @@ using AdminPanel;
 using AdminPanel.Services;
 using Microsoft.AspNetCore.Components.Authorization;
 using MudBlazor.Services;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Http;
 
 
 namespace AdminPanel
@@ -23,6 +25,12 @@ namespace AdminPanel
             builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri("http://localhost:5010") });
 
             builder.Services.AddScoped<ILocalStorageService, LocalStorageService>();
+
+            builder.Services.AddHttpClient<ILoadEntityService, LoadEntityService>(client =>
+            {
+                //client.BaseAdress = new Uri("https://api.stacksandbox.com/")
+                client.BaseAddress = new Uri("http://localhost:5010");
+            });
 
             builder.Services.AddScoped<AuthenticationStateProvider, ApiAuthenticationStateProvider>();
 

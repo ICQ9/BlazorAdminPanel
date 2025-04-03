@@ -1,0 +1,250 @@
+﻿@using FluentValidation
+@using AdminPanel.Shared.Models
+@inject ISnackbar Snackbar
+@inject IJSRuntime JSRuntime
+
+<MudStack Style="width: 100%">
+    <MudForm Model="@_model"
+             @bind-IsValid="_isValid"
+             @bind-IsTouched="_isTouched"
+             Validation="@_validator.ValidateValue">
+
+        <MudItem>
+            <MudFileUpload T="IReadOnlyList<IBrowserFile>"
+                           @ref="_fileUpload"
+                           @bind-Files="_model.Files"
+                           For="@(() => _model.Files)"
+                           Hidden="false"
+                           InputClass="d-flex justify-center cursor-pointer overflow-hidden z-10"
+                           InputStyle="opacity:0"
+                           tabindex="-1"
+                           @ondrop="@ClearDragClass"
+                           @ondragenter="@SetDragClass"
+                           @ondragleave="@ClearDragClass"
+                           @ondragend="@ClearDragClass">
+                <ActivatorContent>
+                    <MudPaper Width="425px"
+                              Height="300px"
+                              Outlined="true"
+                              Class="@_dragClass">
+                        <MudText Typo="Typo.h6">
+                            Drag and drop files here or click
+                        </MudText>
+
+                        @if (!string.IsNullOrWhiteSpace(_imagePreview))
+                        {
+                            <MudImage Width="300" Height="250" ObjectFit="ObjectFit.Cover" Src="@_imagePreview" />
+                        }
+
+                        @if (_model.Files != null && _model.Files.Count > 1)
+                        {
+                            <MudText Color="Color.Primary" Typo="Typo.caption">
+                                + @(_model.Files.Count - 1) more file(s)
+                            </MudText>
+                        }
+                    </MudPaper>
+                </ActivatorContent>
+            </MudFileUpload>
+        </MudItem>
+
+        <MudItem>
+            <MudToolBar Class="relative d-flex justify-end gap-4">
+                <MudButton OnClick="@OpenFilePickerAsync"
+                           Variant="Variant.Filled"
+                           Color="Color.Primary">
+                    Open file picker
+                </MudButton>
+                <MudButton OnClick="@ClearAsync"
+                           Variant="Variant.Filled"
+                           Color="Color.Error"
+                           Disabled="@(_model.Files is null || !_model.Files.Any())">
+                    Clear
+                </MudButton>
+            </MudToolBar>
+        </MudItem>
+
+        <MudItem>
+            @if (_fileUpload?.ValidationErrors.Any() ?? false)
+            {
+                <MudText Color="Color.Error" Typo="Typo.caption">
+                    @_fileUpload?.ValidationErrors[0]
+                </MudText>
+            }
+        </MudItem>
+    </MudForm>
+</MudStack>
+
+@code {
+    public class Model
+    {
+        public IReadOnlyList<IBrowserFile>? Files { get; set; } = new List<IBrowserFile>();
+    }
+
+    private Model _model = new();
+    private FileUploadValidator _validator;
+    private MudFileUpload<IReadOnlyList<IBrowserFile>>? _fileUpload;
+    private bool _isValid;
+    private bool _isTouched;
+    private const string DefaultDragClass = "relative rounded-lg d-flex justify-center border-2 cursor-pointer ma-0-auto border-dashed pa-4 mt-4";
+    private string _dragClass = DefaultDragClass;
+    private string? _imagePreview;
+    private static string imageElementId = "uploadedImage";
+
+    [Parameter] public EventCallback<List<FileFormData>> OnFormDataGenerated { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Initialize validator with upload callback and JSRuntime
+        _validator = new FileUploadValidator(Upload, JSRuntime);
+
+        _validator.OnFormDataGenerated += async (formDataList) =>
+        {
+            // Update preview image with first image
+            if (formDataList.Count > 0)
+            {
+                _imagePreview = $"data:image/png;base64,{formDataList[0].FileBase64}";
+            }
+
+            // Pass form data to parent component
+            await OnFormDataGenerated.InvokeAsync(formDataList);
+        };
+
+        await base.OnInitializedAsync();
+    }
+
+    private void Upload()
+    {
+        Snackbar.Configuration.PositionClass = Defaults.Classes.Position.TopCenter;
+
+        if (_isValid)
+        {
+            Snackbar.Add("TODO: Upload your files!");
+        }
+        else
+        {
+            Snackbar.Add("Please upload valid image files.", MudBlazor.Severity.Error);
+        }
+    }
+
+    private void SetDragClass() => _dragClass = $"{DefaultDragClass} mud-border-primary";
+    private void ClearDragClass() => _dragClass = DefaultDragClass;
+
+    private Task OpenFilePickerAsync() => _fileUpload?.OpenFilePickerAsync() ?? Task.CompletedTask;
+
+    private async Task ClearAsync()
+    {
+        if (_fileUpload != null)
+        {
+            await _fileUpload.ClearAsync();
+            _imagePreview = null;
+        }
+    }
+
+    public class FileUploadValidator : AbstractValidator<Model>
+    {
+        public event Action<List<FileFormData>>? OnFormDataGenerated;
+
+        public FileUploadValidator(Action uploadCallback, IJSRuntime jsRuntime)
+        {
+            _uploadCallback = uploadCallback;
+            _jsRuntime = jsRuntime;
+
+            RuleFor(x => x.Files)
+                .NotEmpty().WithMessage("There must be at least 1 file.")
+                .Must(files => files != null && files.All(file => file.ContentType.StartsWith("image/")))
+                .WithMessage("Only image files are allowed.");
+        }
+
+        private readonly Action _uploadCallback;
+        private readonly IJSRuntime _jsRuntime;
+
+        public Func<object, string, Task<IEnumerable<string>>> ValidateValue => async (model, propertyName) =>
+        {
+            var result = await ValidateAsync(ValidationContext<Model>.CreateWithOptions((Model)model, x => x.IncludeProperties(propertyName)));
+
+            if (result.IsValid)
+            {
+                var files = ((Model)model).Files;
+                if (files != null && files.Any())
+                {
+                    var formDataList = new List<FileFormData>();
+
+                    // Process each file individually
+                    foreach (var file in files)
+                    {
+                        var imageBase64 = await ConvertFileToBase64(file);
+
+                        // Get image dimensions and weight for each file
+                        var (width, height, weight) = await GetImageMetadata(file);
+
+                        // Create form data object for each file
+                        var formData = new FileFormData
+                            {
+                                FileBase64 = imageBase64,
+                                FileInfo = new
+                                {
+                                    FileName = file.Name,
+                                    ContentType = file.ContentType,
+                                    Size = file.Size
+                                },
+                                Width = width,
+                                Height = height,
+                                Weight = weight
+                            };
+
+                        formDataList.Add(formData);
+                    }
+
+                    // Invoke the callback with all form data
+                    OnFormDataGenerated?.Invoke(formDataList);
+
+                    // Trigger upload automatically after successful validation
+                    _uploadCallback();
+                }
+            }
+
+            return result.IsValid
+                ? Array.Empty<string>()
+                : result.Errors.Select(e => e.ErrorMessage);
+        };
+
+        private static async Task<string> ConvertFileToBase64(IBrowserFile file)
+        {
+            using var stream = new MemoryStream();
+            await file.OpenReadStream(file.Size).CopyToAsync(stream);
+            return Convert.ToBase64String(stream.ToArray());
+        }
+
+        private async Task<(int width, int height, int weight)> GetImageMetadata(IBrowserFile file)
+        {
+            try
+            {
+                int weight = (int)file.Size;
+
+                // For multiple images, use a more reliable approach
+                // First, create a temporary data URL and load it via JS
+                var base64 = await ConvertFileToBase64(file);
+                var dataUrl = $"data:{file.ContentType};base64,{base64}";
+
+                // Call JS to get dimensions for this specific image
+                var dimensions = await _jsRuntime.InvokeAsync<ImageDimensions>(
+                    "getImageDimensionsFromDataUrl",
+                    dataUrl
+                );
+
+                return (dimensions.Width, dimensions.Height, weight);
+            }
+            catch
+            {
+                // Fallback to default values in case of error
+                return (300, 250, (int)file.Size);
+            }
+        }
+    }
+
+    public class ImageDimensions
+    {
+        public int Width { get; set; }
+        public int Height { get; set; }
+    }
+}
