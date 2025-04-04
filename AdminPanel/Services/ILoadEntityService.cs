@@ -22,6 +22,10 @@ namespace AdminPanel.Services
         Task<Advertiser> LoadAdvertiserById(int advId);
 
         Task<HttpResponseMessage> SaveCreative(SaveCreativeModel creative);
+        
+        Task<HttpResponseMessage> SaveTeaserFeedItem(FeedAdItem feedAdItem);
+        Task<HttpResponseMessage> SaveProfile(SaveProfileModel profile);
+        
     }
 
     public class LoadEntityService : ILoadEntityService
@@ -125,6 +129,18 @@ namespace AdminPanel.Services
         {
             return await SafeApiCallAsync(async client =>
                 await client.PostAsJsonAsync("/api/creative", creative)); 
+        }
+
+        public async Task<HttpResponseMessage> SaveTeaserFeedItem(FeedAdItem feedAdItem)
+        {
+            return await SafeApiCallAsync(async client =>
+                await client.PostAsJsonAsync("api/teaser-ad-item",feedAdItem));
+        }
+
+        public async Task<HttpResponseMessage> SaveProfile(SaveProfileModel profile)
+        {
+            return await SafeApiCallAsync(async client => 
+                await client.PostAsJsonAsync("api/profile", profile));
         }
     }
 }

@@ -21,15 +21,15 @@ namespace AdminPanel
             var builder = WebAssemblyHostBuilder.CreateDefault(args);
             builder.RootComponents.Add<App>("#app");
 
-            //builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri("https://api.stacksandbox.com/") });
-            builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri("http://localhost:5010") });
+            builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri("https://api.stacksandbox.com/") });
+            //builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri("http://localhost:5010") });
 
             builder.Services.AddScoped<ILocalStorageService, LocalStorageService>();
 
             builder.Services.AddHttpClient<ILoadEntityService, LoadEntityService>(client =>
             {
-                //client.BaseAdress = new Uri("https://api.stacksandbox.com/")
-                client.BaseAddress = new Uri("http://localhost:5010");
+                client.BaseAddress = new Uri("https://api.stacksandbox.com/");
+                //client.BaseAddress = new Uri("http://localhost:5010");
             });
 
             builder.Services.AddScoped<AuthenticationStateProvider, ApiAuthenticationStateProvider>();
