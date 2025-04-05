@@ -46,9 +46,9 @@ namespace AdminPanel.Shared.Models
         public long ImpressionsLimit { get; set; }
         public int MaxEventsPerVisitor { get; set; }
         public int MaxEventsPeriod { get; set; }
-        public string DeliveryDistribution { get; set; }
-        public string BudgetRestrictionType { get; set; }
-        public string ImpressionsRestrictionType { get; set; }
+        public string DeliveryDistribution { get; set; } = "EvenlyPerDay";
+        public string BudgetRestrictionType { get; set; } = "Unlim";
+        public string ImpressionsRestrictionType { get; set; } = "Profile";
         public string AuctionType { get; set; }
         public bool BlockPrebid { get; set; }
         public decimal BudgetLimit { get; set; }

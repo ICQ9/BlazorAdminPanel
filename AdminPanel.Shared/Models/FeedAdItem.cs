@@ -8,8 +8,6 @@ public class FeedAdItem
     public string ButtonText { get; set; } = "";
     public DynamicSettings DynamicSettings { get; set; }
     public int? ContainerId { get; set; }
-    public List<object> CustomRules { get; set; }
-    public List<object> RetargetRules { get; set; }
     public List<int> FeedIds { get; set; }
     public int Id { get; set; }
     public int ItemCount { get; set; }
@@ -19,12 +17,13 @@ public class FeedAdItem
     public int ProfileId { get; set; }
     public string State { get; set; } = "Active";
     public StaticRules StaticRules { get; set; }
+    public int TemplateId { get; set; } = 235;
 }
 
 public class DynamicSettings
 {
-    public List<object> CustomRules { get; set; }
-    public List<object> RetargetRules { get; set; }
+    public List<CustomRule> CustomRules { get; set; }
+    public List<RetargetRule> RetargetRules { get; set; }
     public int? ContainerId { get; set; }
 }
 
@@ -39,5 +38,17 @@ public class StaticRules
     public List<string> ItemId { get; set; }
     public List<object> Items { get; set; }
     public string SelectedRuleType { get; set; } = "Static";
-    public int TemplateId { get; set; } = 235;
+}
+
+public class CustomRule
+{
+    public Dictionary<string, string> VisitorMatch { get; set; }
+    public Dictionary<string, string> TeaserFeedMatch { get; set; }
+}
+public class RetargetRule
+{
+    public string VariableName { get; set; }
+    public string VariableFeedMatchName { get; set; }
+    public bool FeelRndIfNotEnough { get; set; }
+    public List<string> RetargetToFeedVariable { get; set; }
 }

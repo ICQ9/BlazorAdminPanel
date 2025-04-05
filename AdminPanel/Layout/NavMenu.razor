@@ -1,13 +1,13 @@
 ﻿<MudPaper Width="250px" Class="d-inline-flex py-3" Elevation="0">
     <MudNavMenu Class="mud-width-full">
-        <MudText Typo="Typo.h6" Class="px-4">Admin Panel</MudText>        
+        <MudText Typo="Typo.h6" Class="px-4">Admin Panel</MudText>
         <MudDivider Class="my-2" />
         <MudNavLink Href="/" Icon="fas fa-chart-line">Dashboard</MudNavLink>
         <MudNavLink Href="/advertisers" Icon="fas fa-server">Advertisers</MudNavLink>
         <MudNavLink Href="/products" Icon="fas fa-receipt" Disabled="true">Products</MudNavLink>
         <MudNavLink Href="/campaigns" Icon="fas fa-receipt">Campaigns</MudNavLink>
         <MudNavLink Href="/profiles" Icon="fas fa-receipt">Profiles</MudNavLink>
-        <MudNavLink Href="/creatives" Icon="fas fa-receipt" Disabled="true" >Creatives</MudNavLink>
+        <MudNavLink Href="/creatives" Icon="fas fa-receipt" Disabled="true">Creatives</MudNavLink>
         <MudNavGroup Title="Settings" Icon="fas fa-cogs" Expanded="false">
             <MudNavLink Href="/users" Icon="@Icons.Material.Filled.People" IconColor="Color.Success" Disabled="true">Users</MudNavLink>
             <MudNavLink Href="/security" Icon="fas fa-user-shield" IconColor="Color.Info" Disabled="true">Security</MudNavLink>
@@ -15,58 +15,14 @@
     </MudNavMenu>
 </MudPaper>
 
-
-@* <div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">AdminPanel</a>
-        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-    </div>
-</div>
-
-<div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
-    <nav class="flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi" aria-hidden="true"></span> Home
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="advertisers">
-                <span class="bi" aria-hidden="true"></span> Advertising
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="campaigns">
-                <span class="bi" aria-hidden="true"></span> Campaigns
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="products">
-                <span class="bi" aria-hidden="true"></span> Products
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="insights">
-                <span class="bi" aria-hidden="true"></span> Insights
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="profiles">
-                <span class="bi" aria-hidden="true"></span> Profiles
-            </NavLink>
-        </div>
-    </nav>
-</div> *@
-
 @code {
     private bool collapseNavMenu = true;
-
     private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
 
     private void ToggleNavMenu()
     {
         collapseNavMenu = !collapseNavMenu;
     }
+
+   
 }

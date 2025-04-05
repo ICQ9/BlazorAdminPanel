@@ -6,9 +6,11 @@
 <PageTitle>BlazorAuthClient</PageTitle>
 
 <div class="page">
+
     <div class="sidebar">
         <NavMenu />
     </div>
+
     <div class="main">
         <MudThemeProvider />
         <MudPopoverProvider />
@@ -24,6 +26,8 @@
 </div>
 
 @code {
+    private bool isAuthenticated { get; set; }
+
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
