@@ -14,121 +14,116 @@
 
 <MudDialog>
     <DialogContent>
+        @if (_loadingData)
+        {
+            <div class="blur-overlay">
+                <MudProgressCircular Color="Color.Primary" Style="width: 170px; height: 170px" Indeterminate="true" />
+            </div>
+        }
+
         <MudStepper @bind-ActiveIndex="_index" OnPreviewInteraction="OnPreviewInteraction">
-            <MudStep Title="Fill Basic Profile Information">
-                <ProfileBaseForm @bind-Model="newProfile" OnFormRefReady="@(form => FormRef = form)" />
-            </MudStep>
-
-
-            <MudStep Title="Link Product to profile">
-                <MudForm Model="@newProfile" @ref="@FormRef">
-                    <MudGrid>
-                        <MudItem>
-                            <MudTable @ref="_table" Items="productFormats">
-                                <HeaderContent>
-                                    <MudTh>Select</MudTh>
-                                    <MudTh>Name</MudTh>
-                                    <MudTh>Price Model</MudTh>
-                                </HeaderContent>
-                                <RowTemplate>
-                                    <MudRadioGroup @bind-Value="newProfile.ProductFormatId"><MudRadio Value="@context.Id" Size="Size.Small"></MudRadio></MudRadioGroup>
-                                    <MudTd DataLabel="Name">@context.FormatName</MudTd>
-                                    <MudTd DataLabel="Position">@context.PriceModel</MudTd>
-                                </RowTemplate>
-                            </MudTable>
-                        </MudItem>
-                    </MudGrid>
-                </MudForm>
-            </MudStep>
-            <MudStep Title="Create an ad" Disabled="_disabled">
-                @if (newProfile.IsTeaserProfile)
-                {
+                <MudStep Title="Fill Basic Profile Information">
+                    <ProfileBaseForm @bind-Model="newProfile" OnFormRefReady="@(form => FormRef = form)"/>
+                </MudStep>
+                <MudStep Title="Link Product to profile">
                     <MudForm Model="@newProfile" @ref="@FormRef">
-                        <MudGrid>
-                            <MudItem>
-                                <MudTable @ref="_tableFeed" Items="productFeedItems" MultiSelection="true" @bind-SelectedItems="selectedFeedItem">
-                                    <ToolBarContent>
-                                        <MudText Typo="Typo.h6">Select Products</MudText>
-                                        <MudSpacer />
-                                        @*<MudTextField @bind-Value="searchString1" Placeholder="Search" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>*@
-                                    </ToolBarContent>
+                        <MudGrid Justify="Justify.Center">
+                            <MudItem xs="12">
+                                <MudTable @ref="_table" Items="productFormats">
                                     <HeaderContent>
-                                        <MudTh>Preview</MudTh>
+                                        <MudTh>Select</MudTh>
                                         <MudTh>Name</MudTh>
-                                        <MudTh>Brand</MudTh>
-                                        <MudTh>Description</MudTh>
+                                        <MudTh>Price Model</MudTh>
                                     </HeaderContent>
                                     <RowTemplate>
-                                        <MudTd DataLabel="Preview"><MudImage Width="50" Height="50" Src="@context.Preview"></MudImage></MudTd>
-                                        <MudTd DataLabel="Name">@context.Title</MudTd>
-                                        <MudTd DataLabel="Brand">@context.Brand</MudTd>
-                                        <MudTd DataLabel="Description">@context.Description</MudTd>
+                                        <MudRadioGroup @bind-Value="newProfile.ProductFormatId"><MudRadio Value="@context.Id" Size="Size.Small"></MudRadio></MudRadioGroup>
+                                        <MudTd DataLabel="Name">@context.FormatName</MudTd>
+                                        <MudTd DataLabel="Position">@context.PriceModel</MudTd>
                                     </RowTemplate>
-                                    <PagerContent>
-                                        <MudTablePager />
-                                    </PagerContent>
                                 </MudTable>
                             </MudItem>
                         </MudGrid>
                     </MudForm>
-                }
-                else
-                {
-                    <MudForm Model="@newCreative" @ref="@FormRef">
-                        <MudTextField Required="true" Label="Name" @bind-Value="@newCreative.Name" />
-                        <MudTextField Required="true" Label="Tracking Url" @bind-Value="@newCreative.TrackingUrl" />
-                        <MudTextField Required="true" Label="Brand Name" @bind-Value="@newCreative.BrandName" />
-                        <DragAndDropComponent OnFormDataGenerated="OnFormDataGenerated" />
-                    </MudForm>
-                }
+                </MudStep>
+                <MudStep Title="Create an ad" Disabled="_disabled">
+                    @if (newProfile.IsTeaserProfile)
+                    {
+                        <MudForm Model="@newProfile" @ref="@FormRef">
+                            <MudGrid Justify="Justify.Center">
+                                <MudItem xs="12">
+                                    <MudTable @ref="_tableFeed" Items="productFeedItems" MultiSelection="true" Filter="new Func<ProductFeedItem,bool>(FilterFunc1)" @bind-SelectedItems="selectedFeedItems">
+                                        <ToolBarContent>
+                                            <MudText Typo="Typo.h6">Select Products</MudText>
+                                            <MudSpacer/>
+                                            <MudTextField Immediate="true" @bind-Value="searchString1"
+                                                          Placeholder="Search" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
+                                        </ToolBarContent>
+                                        <HeaderContent>
+                                            <MudTh>Preview</MudTh>
+                                            <MudTh>Name</MudTh>
+                                            <MudTh>Brand</MudTh>
+                                            <MudTh>Description</MudTh>
+                                        </HeaderContent>
+                                        <RowTemplate>
+                                            <MudTd DataLabel="Preview"><MudImage Width="50" Height="50" Src="@context.Preview"></MudImage></MudTd>
+                                            <MudTd DataLabel="Name">@context.Title</MudTd>
+                                            <MudTd DataLabel="Brand">@context.Brand</MudTd>
+                                            <MudTd DataLabel="Description">@context.Description</MudTd>
+                                        </RowTemplate>
+                                        <PagerContent>
+                                            <MudTablePager PageSizeOptions="new []{3,5,10}"/>
+                                        </PagerContent>
+                                    </MudTable>
+                                </MudItem>
+                            </MudGrid>
+                        </MudForm>
+                    }
+                    else
+                    {
+                        <MudForm Model="@newCreative" @ref="@FormRef">
+                            <MudTextField Required="true" Label="Name" @bind-Value="@newCreative.Name"/>
+                            <MudTextField Required="true" Label="Tracking Url" @bind-Value="@newCreative.TrackingUrl"/>
+                            <MudTextField Required="true" Label="Brand Name" @bind-Value="@newCreative.BrandName"/>
+                            <DragAndDropComponent OnFormDataGenerated="OnFormDataGenerated"/>
+                        </MudForm>
+                    }
 
-            </MudStep>
+                </MudStep>
 
 
-            <MudStep Title="Setup Price" Disabled="_disabled">
-                <MudPaper Class="pa-4 my-4" Elevation="0" Outlined="true">
-                    <MudGrid>
-                        <MudItem xs="6">
-                            <div class="d-flex align-center">
-                                <MudText Class="ml-1">Event Price</MudText>
-                                <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Class="ml-1" />
-                            </div>
-                            <MudTextField T="decimal"
-                            Value="@newProfile.EventPrice"
-                            ValueChanged="@((decimal val) => newProfile.EventPrice = val)"
-                            Margin="Margin.Dense"
-                            Class="mt-1 ml-6" />
-                        </MudItem>
-                        <MudItem xs="6" Class="d-flex align-center justify-end">
-                            <div>
-                                <MudText Class="mb-1 text-center">Recoomended Price</MudText>
-                                <MudText Color="Color.Warning" Class="text-center">@newProfile.EventPrice USD</MudText>
-                            </div>
-                            <MudText Typo="Typo.h5" Class="mx-4">≥</MudText>
-                        </MudItem>
-                    </MudGrid>
-                </MudPaper>
-            </MudStep>
+                <MudStep Title="Setup Price" Disabled="_disabled">
+                    <MudPaper Class="pa-4 my-4" Elevation="0" Outlined="true">
+                        <MudGrid>
+                            <MudItem xs="6">
+                                <div class="d-flex align-center">
+                                    <MudText Class="ml-1">Event Price</MudText>
+                                    <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Class="ml-1"/>
+                                </div>
+                                <MudTextField T="decimal"
+                                              Value="@newProfile.EventPrice"
+                                              ValueChanged="@((decimal val) => newProfile.EventPrice = val)"
+                                              Margin="Margin.Dense"
+                                              Class="mt-1 ml-6"/>
+                            </MudItem>
+                            <MudItem xs="6" Class="d-flex align-center justify-end">
+                                <div>
+                                    <MudText Class="mb-1 text-center">Recommended price</MudText>
+                                    <MudText Color="Color.Warning" Class="text-center">@newProfile.EventPrice USD</MudText>
+                                </div>
+                                <MudText Typo="Typo.h5" Class="mx-4">≥</MudText>
+                            </MudItem>
+                        </MudGrid>
+                    </MudPaper>
+                </MudStep>
         </MudStepper>
-        @if (_loadingData)
-        {
-            <div class="position-relative">
-                <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-                            background-color: rgba(255,255,255,0.7);
-                            display: flex; justify-content: center; align-items: center;
-                            z-index: 1000;">
-                    <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
-                </div>
-            </div>
-        }
     </DialogContent>
-    @* <DialogActions>
+    @*<DialogActions>
         <MudButton OnClick="Cancel">Cancel</MudButton>
         <MudButton Color="Color.Primary" OnClick="Submit">Ok</MudButton>
-    </DialogActions> *@
+    </DialogActions>*@
 </MudDialog>
 @code {
-    private bool _loadingData = false;
+    private bool _loadingData = true;
     private bool _error;
     private bool _completed;
     private bool basicInformationComplete;
@@ -142,6 +137,7 @@
 
     private List<ProductFormat> productFormats = new List<ProductFormat>();
     private IEnumerable<ProductFeed> productFeeds;
+    private string searchString1 = "";
     private List<ProductFeedItem> productFeedItems = new List<ProductFeedItem>();
 
     private FileFormData uploadFileFormData;
@@ -150,7 +146,7 @@
     private ProductFormat selectedItem = new ProductFormat();
     private Campaign selectedCampaign = new Campaign();
     private Advertiser selectedAdvertiser = new Advertiser();
-    private HashSet<ProductFeedItem> selectedFeedItem = new HashSet<ProductFeedItem>();
+    private HashSet<ProductFeedItem> selectedFeedItems = new HashSet<ProductFeedItem>();
     private FeedAdItem feedAdItem = new FeedAdItem();
     private int creativeId;
     private int createdProfileId;
@@ -158,8 +154,25 @@
     private int _index;
     [CascadingParameter] IMudDialogInstance MudDialog { get; set; }
     [Parameter] public string Title { get; set; } = "Create Profile";
+    
+    
+    private bool FilterFunc1(ProductFeedItem feedItem) => FilterFunc(feedItem, searchString1);
 
-    private void Submit() => MudDialog.Close(DialogResult.Ok(true));
+    private bool FilterFunc(ProductFeedItem feedItem, string searchString)
+    {
+        if (string.IsNullOrWhiteSpace(searchString))
+            return true;
+        if (feedItem.Title.Contains(searchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+        return false;
+    }
+
+    private async void Submit()
+    {
+        
+        MudDialog.Close(DialogResult.Ok(true));
+    }
+    
 
     private void Cancel() => MudDialog.Cancel();
 
@@ -171,23 +184,25 @@
 
             if (!FormRef.IsValid)
             {
-                //Snackbar.Add("❌ Ти шо, не заповнив форму? Нахуй далі!", Severity.Error);
                 arg.Cancel = true;
                 return;
             }
         }
         _loadingData = true;
+        StateHasChanged();     // <- оновлює UI *негайно*
+
         if (arg.Action == StepAction.Complete)
         {
             await ControlStepCompletion(arg);
         }
-
         _loadingData = false;
+
+        
     }
 
     protected override async Task OnInitializedAsync()
     {
-
+        _loadingData = false;
     }
 
     private async Task<int> GetCampaignId()
@@ -246,14 +261,20 @@
                     await LoadProductFeeds();
                     await LoadProductFeedsItems();
                 }
-                _loadingData = false;
+                
                 break;
             case 2:
                 await SetupCreativeStep(arg);
-                break;
-            case 3: 
                 await LoadRecomendedPrice();
-                _loadingData = false;
+                break;
+            case 3:
+                //TODO: Get all entities and go create into DB
+                // bool okProfile = await SaveProfile();
+                // bool okItem = await SaveAdItem();
+                //@inject ISnackbar Snackbar
+                // 
+                MudDialog.Close(DialogResult.Ok(true));
+                Snackbar.Add("Create sucsess",MudBlazor.Severity.Success);
                 break;
         }
     }
@@ -276,16 +297,16 @@
     {
         if (newProfile.IsTeaserProfile)
         {
-            if (selectedFeedItem.Count > 0)
+            if (selectedFeedItems.Count > 0)
             {
-                var teaserId = selectedFeedItem.Select(x => x.Id).FirstOrDefault();
+                var teaserId = selectedFeedItems.Select(x => x.TeaserFeedId).FirstOrDefault();
                 feedAdItem.FeedIds.Add(teaserId);
-                feedAdItem.ItemCount = selectedFeedItem.Count();
+                feedAdItem.ItemCount = selectedFeedItems.Count();
                 feedAdItem.Name = "TeaserFeed";
                 feedAdItem.ProfileId = createdProfileId;
                 feedAdItem.StaticRules = new StaticRules()
                     {
-                        ItemId = selectedFeedItem.Select(x => x.ItemId).ToList(),
+                        ItemId = selectedFeedItems.Select(x => x.ItemId).ToList(),
                     };
                 //var result = await LoadEntityService.SaveTeaserFeedItem(feedAdItem: feedAdItem);
                 // if (!result.IsSuccessStatusCode)

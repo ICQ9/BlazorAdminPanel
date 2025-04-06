@@ -8,7 +8,7 @@ public class FeedAdItem
     public string ButtonText { get; set; } = "";
     public DynamicSettings DynamicSettings { get; set; }
     public int? ContainerId { get; set; }
-    public List<int> FeedIds { get; set; }
+    public List<int> FeedIds { get; set; } = new List<int>();
     public int Id { get; set; }
     public int ItemCount { get; set; }
     public string LandingPage { get; set; }
