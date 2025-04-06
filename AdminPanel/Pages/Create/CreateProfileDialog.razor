@@ -16,9 +16,7 @@
     <DialogContent>
         <MudStepper @bind-ActiveIndex="_index" OnPreviewInteraction="OnPreviewInteraction">
             <MudStep Title="Fill Basic Profile Information">
-
-                <ProfileBaseForm @bind-Model="newProfile"/>
-
+                <ProfileBaseForm @bind-Model="newProfile" OnFormRefReady="@(form => FormRef = form)" />
             </MudStep>
 
 
@@ -96,10 +94,10 @@
                                 <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Class="ml-1" />
                             </div>
                             <MudTextField T="decimal"
-                                          Value="@newProfile.EventPrice"
-                                          ValueChanged="@((decimal val) => newProfile.EventPrice = val)"
-                                          Margin="Margin.Dense"
-                                          Class="mt-1 ml-6" />
+                            Value="@newProfile.EventPrice"
+                            ValueChanged="@((decimal val) => newProfile.EventPrice = val)"
+                            Margin="Margin.Dense"
+                            Class="mt-1 ml-6" />
                         </MudItem>
                         <MudItem xs="6" Class="d-flex align-center justify-end">
                             <div>
@@ -167,7 +165,17 @@
 
     private async Task OnPreviewInteraction(StepperInteractionEventArgs arg)
     {
-        //TODO: Using Fulent Validation
+        if (FormRef != null)
+        {
+            await FormRef.Validate();
+
+            if (!FormRef.IsValid)
+            {
+                //Snackbar.Add("❌ Ти шо, не заповнив форму? Нахуй далі!", Severity.Error);
+                arg.Cancel = true;
+                return;
+            }
+        }
         _loadingData = true;
         if (arg.Action == StepAction.Complete)
         {

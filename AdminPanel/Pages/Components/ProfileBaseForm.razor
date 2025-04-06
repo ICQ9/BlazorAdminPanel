@@ -11,20 +11,21 @@
 @inject IDialogService DialogService
 @inject HttpClient Http
 
+
 <MudForm Model="@Model" @ref="FormRef">
     <MudGrid>
         <MudItem xs="12" sm="6">
-            <MudTextField Variant="Variant.Outlined" Required="true" Label="Profile Name" @bind-Value="Model.Name" />
+            <MudTextField Variant="Variant.Outlined" Immediate="true" Required="true" Label="Profile Name" @bind-Value="Model.Name" For="@(() => Model.Name)" />
         </MudItem>
         
         <MudFlexBreak />
 
         <MudItem xs="12" sm="6">
-                <MudDatePicker Variant="Variant.Outlined" Required="true" Label="Date From" ShowToolbar="false" @bind-Date="Model.DateFrom" />
+                <MudDatePicker Variant="Variant.Outlined" Required="true" Label="Date From" ShowToolbar="false" @bind-Date="Model.DateFrom" For="@(() => Model.DateFrom)"  />
         </MudItem>
 
         <MudItem xs="12" sm="6">
-                <MudDatePicker Variant="Variant.Outlined" Required="true" Label="Date To" ShowToolbar="false" @bind-Date="Model.DateTo" />
+                <MudDatePicker Variant="Variant.Outlined" Required="true" Label="Date To" ShowToolbar="false" @bind-Date="Model.DateTo" For="@(() => Model.DateTo)" />
         </MudItem>
 
         <MudItem xs="12">
