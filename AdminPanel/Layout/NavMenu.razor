@@ -1,28 +1,46 @@
-﻿<MudPaper Width="250px" Class="d-inline-flex py-3" Elevation="0">
-    <MudNavMenu Class="mud-width-full">
-        <MudText Typo="Typo.h6" Class="px-4">Admin Panel</MudText>
-        <MudDivider Class="my-2" />
-        <MudNavLink Href="/" Icon="fas fa-chart-line">Dashboard</MudNavLink>
-        <MudNavLink Href="/advertisers" Icon="fas fa-server">Advertisers</MudNavLink>
-        <MudNavLink Href="/products" Icon="fas fa-receipt" Disabled="true">Products</MudNavLink>
-        <MudNavLink Href="/campaigns" Icon="fas fa-receipt">Campaigns</MudNavLink>
-        <MudNavLink Href="/profiles" Icon="fas fa-receipt">Profiles</MudNavLink>
-        <MudNavLink Href="/creatives" Icon="fas fa-receipt" Disabled="true">Creatives</MudNavLink>
-        <MudNavGroup Title="Settings" Icon="fas fa-cogs" Expanded="false">
-            <MudNavLink Href="/users" Icon="@Icons.Material.Filled.People" IconColor="Color.Success" Disabled="true">Users</MudNavLink>
-            <MudNavLink Href="/security" Icon="fas fa-user-shield" IconColor="Color.Info" Disabled="true">Security</MudNavLink>
-        </MudNavGroup>
-    </MudNavMenu>
-</MudPaper>
+﻿@using AdminPanel.Services
+@using Microsoft.AspNetCore.Components.Authorization
+@inject NavigationManager NavigationManager
+@inject ApiAuthenticationStateProvider AuthStateProvider
+
+<AuthorizeView>
+    <Authorized>
+        <MudPaper Width="250px" Class="d-flex flex-column" Style="height: 100vh;" Elevation="0">
+            <MudNavMenu Bordered="true" Class="mud-width-full pa-2">
+                <MudText Typo="Typo.h6" Class="px-4">Admin Panel</MudText>
+                <MudDivider Class="my-2" />
+                <MudNavLink Href="/dashboard" Icon="fas fa-chart-line">Dashboard</MudNavLink>
+                <MudNavLink Href="/advertisers" Icon="fas fa-server">Advertisers</MudNavLink>
+                <MudNavLink Href="/products" Icon="fas fa-receipt" Disabled="true">Products</MudNavLink>
+                <MudNavLink Href="/campaigns" Icon="fas fa-receipt">Campaigns</MudNavLink>
+                <MudNavLink Href="/profiles" Icon="fas fa-receipt">Profiles</MudNavLink>
+                <MudNavLink Href="/creatives" Icon="fas fa-receipt" Disabled="true">Creatives</MudNavLink>
+                <MudNavGroup Title="Settings" Icon="fas fa-cogs" Expanded="false">
+                    <MudNavLink Href="/users" Icon="@Icons.Material.Filled.People" IconColor="Color.Success" Disabled="true">Users</MudNavLink>
+                    <MudNavLink Href="/security" Icon="fas fa-user-shield" IconColor="Color.Info" Disabled="true">Security</MudNavLink>
+                </MudNavGroup>
+            </MudNavMenu>
+            
+            <div class="mt-auto pa-2">
+                <MudDivider />
+                <MudNavLink OnClick="HandleLogout" Icon="@Icons.Material.Filled.Logout" IconColor="Color.Error" Class="mt-2">
+                    Logout
+                </MudNavLink>
+            </div>
+        </MudPaper>
+    </Authorized>
+</AuthorizeView>
 
 @code {
-    private bool collapseNavMenu = true;
-    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
-
-    private void ToggleNavMenu()
+    private async Task HandleLogout()
     {
-        collapseNavMenu = !collapseNavMenu;
+        // First mark the user as logged out to trigger the AuthorizeView update
+        await AuthStateProvider.MarkUserAsLoggedOut();
+        
+        // Force a state refresh
+        await AuthStateProvider.GetAuthenticationStateAsync();
+        
+        // Use replace instead of navigate to prevent back navigation
+        NavigationManager.NavigateTo("/login", true);
     }
-
-   
 }

@@ -7,59 +7,51 @@
 @inject ILocalStorageService LocalStorageService
 @inject NavigationManager Navigation
 
-<div class="campaigns-container">
-    <div class="header">
-        <h3>Campaigns</h3>
-        <button class="btn btn-primary" @onclick="ShowCreateForm">Create Campaign</button>
-    </div>
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudGrid>
+        <MudItem xs="12">
+            <MudPaper Class="pa-4">
+                <MudGrid>
+                    <MudItem xs="12" md="6">
+                        <MudText Typo="Typo.h5">Campaigns</MudText>
+                    </MudItem>
+                    <MudItem xs="12" md="6" Class="d-flex justify-end">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" @onclick="ShowCreateForm">Create Campaign</MudButton>
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+        </MudItem>
 
-    @if (campaigns == null)
-    {
-        <p>Loading...</p>
-    }
-    else
-    {
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Name</th>
-                    <th>Budget</th>
-                    <th>Date From</th>
-                    <th>Date To</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var campaign in campaigns)
-                {
-                    <tr>
-                        <td>@campaign.Id</td>
-                        <td>@campaign.Name</td>
-                        @* <td>$@campaign.Budget</td>
-                        <td>@campaign.DateFrom.ToShortDateString()</td>
-                        <td>@campaign.DateTo.ToShortDateString()</td> *@
-                        <td>
-                            <button class="btn btn-sm btn-info">Edit</button>
-                            <button class="btn btn-sm btn-danger">Delete</button>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    }
-
-    @if (showCreateForm)
-    {
-        <div class="create-form-overlay">
-            <CreateCampaign OnCancel="HideCreateForm" OnCampaignCreated="HandleCampaignCreated" />
-        </div>
-    }
-</div>
+        <MudItem xs="12">
+            <MudTable Items="filteredCampaigns" Hover="true" Loading="@_loading" LoadingProgressColor="Color.Info">
+                <HeaderContent>
+                    <MudTh>ID</MudTh>
+                    <MudTh>Name</MudTh>
+                    <MudTh>Budget</MudTh>
+                    <MudTh>Date From</MudTh>
+                    <MudTh>Date To</MudTh>
+                    <MudTh>Actions</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="ID">@context.Id</MudTd>
+                    <MudTd DataLabel="Name">@context.Name</MudTd>
+                    <MudTd DataLabel="Advertiser Id">$@context.AdvertiserId</MudTd>
+                    <MudTd DataLabel="Date From">@context.StartDate</MudTd>
+                    <MudTd DataLabel="Date To">@context.EndDate</MudTd>
+                    <MudTd DataLabel="Actions">
+                        <MudButton Variant="Variant.Text" Color="Color.Info" Size="Size.Small">Edit</MudButton>
+                        <MudButton Variant="Variant.Text" Color="Color.Error" Size="Size.Small">Delete</MudButton>
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        </MudItem>
+    </MudGrid>
+</MudContainer>
 
 @code {
     private bool showCreateForm = false;
     private List<Campaign> campaigns;
+    private bool _loading = true;
 
     protected override async Task OnInitializedAsync()
     {
@@ -80,11 +72,13 @@
         try
         {
             campaigns = await Http.GetFromJsonAsync<List<Campaign>>("/api/campaign/list");
+            _loading = false;
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error loading campaigns: {ex.Message}");
             campaigns = new List<Campaign>(); // Initialize empty list on error
+            _loading = false;
         }
     }
 
@@ -106,4 +100,7 @@
         // Reload the campaigns list
         await LoadCampaigns();
     }
+
+    private IEnumerable<Campaign> filteredCampaigns =>
+        campaigns ?? Enumerable.Empty<Campaign>();
 }
