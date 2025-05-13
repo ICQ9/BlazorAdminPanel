@@ -27,5 +27,7 @@ namespace AdminPanel.Shared.Models
 
         public string TimeZone { get;set; }
 
+        public CampaignStats Stats { get; set; } = new CampaignStats();
+
     }
 }

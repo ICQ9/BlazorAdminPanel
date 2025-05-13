@@ -82,8 +82,22 @@
                     {
                         <MudForm Model="@newCreative" @ref="@FormRef">
                             <MudTextField Required="true" Label="Name" @bind-Value="@newCreative.Name"/>
-                            <MudTextField Required="true" Label="Tracking Url" @bind-Value="@newCreative.TrackingUrl"/>
-                            <MudTextField Required="true" Label="Brand Name" @bind-Value="@newCreative.BrandName"/>
+                            <MudTextField Required="true" Label="Landing page" @bind-Value="@newCreative.TrackingUrl"/>
+                            
+                            @if (productFeedItems?.Any() == true)
+                            {
+                                <MudSelect T="string" Label="Brand Name" @bind-Value="@newCreative.BrandName" Required="true">
+                                    @foreach (var brand in productFeedItems.Select(x => x.Brand).Distinct())
+                                    {
+                                        <MudSelectItem Value="@brand">@brand</MudSelectItem>
+                                    }
+                                </MudSelect>
+                            }
+                            else
+                            {
+                                <MudTextField Required="true" Label="Brand Name" @bind-Value="@newCreative.BrandName"/>
+                            }
+                            
                             <DragAndDropComponent OnFormDataGenerated="OnFormDataGenerated"/>
                         </MudForm>
                     }
@@ -256,12 +270,8 @@
                 break;
             case 1:
                 await SetupProductFormatToProfile(newProfile.ProductFormatId);
-                if (newProfile.IsTeaserProfile)
-                {
-                    await LoadProductFeeds();
-                    await LoadProductFeedsItems();
-                }
-                
+                await LoadProductFeeds();
+                await LoadProductFeedsItems();
                 break;
             case 2:
                 await SetupCreativeStep(arg);

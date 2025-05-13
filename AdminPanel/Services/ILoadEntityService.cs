@@ -21,6 +21,8 @@ namespace AdminPanel.Services
         Task<IEnumerable<ProductFeed>> LoadProductFeed(int clientId);
         Task<Advertiser> LoadAdvertiserById(int advId);
 
+        Task<IEnumerable<CampaignStats>> LoadCampaignStats(string selectedPeriod);
+
         Task<HttpResponseMessage> SaveCreative(SaveCreativeModel creative);
         
         Task<HttpResponseMessage> SaveTeaserFeedItem(FeedAdItem feedAdItem);
@@ -141,6 +143,70 @@ namespace AdminPanel.Services
         {
             return await SafeApiCallAsync(async client => 
                 await client.PostAsJsonAsync("api/profile", profile));
+        }
+
+        public async Task<IEnumerable<CampaignStats>> LoadCampaignStats(string selectedPeriod)
+        {
+
+            var (dateFrom, dateTo) = GetDateRangeFromPeriod(selectedPeriod, null, null);
+
+            string dateFromParam = dateFrom.ToString("yyyy-MM-ddTHH:mm:ss");
+            string dateToParam = dateTo.ToString("yyyy-MM-ddTHH:mm:ss");
+
+            return await SafeApiCallAsync(async client =>
+               await client.GetFromJsonAsync<IEnumerable<CampaignStats>>("api/campaign/stats?dateFrom=2025-05-06T00:00:00&dateTo=2025-05-12T23:59:00&currencyType=Network&timeZoneType=Network"));
+        }
+
+        private (DateTime dateFrom, DateTime dateTo) GetDateRangeFromPeriod(string period, DateTime? customDateFrom, DateTime? customDateTo)
+        {
+            DateTime now = DateTime.Now;
+            DateTime dateFrom;
+            DateTime dateTo;
+
+            switch (period.ToLower())
+            {
+                case "yesterday":
+                    dateFrom = now.AddDays(-1).Date;
+                    dateTo = now.AddDays(-1).Date.AddHours(23).AddMinutes(59);
+                    break;
+
+                case "last7days":
+                    dateFrom = now.AddDays(-7).Date;
+                    dateTo = now.Date.AddHours(23).AddMinutes(59);
+                    break;
+
+                case "last30days":
+                    dateFrom = now.AddDays(-30).Date;
+                    dateTo = now.Date.AddHours(23).AddMinutes(59);
+                    break;
+
+                case "thismonth":
+                    dateFrom = new DateTime(now.Year, now.Month, 1);
+                    dateTo = now.Date.AddHours(23).AddMinutes(59);
+                    break;
+
+                case "lastmonth":
+                    var lastMonth = now.AddMonths(-1);
+                    dateFrom = new DateTime(lastMonth.Year, lastMonth.Month, 1);
+                    dateTo = new DateTime(now.Year, now.Month, 1).AddDays(-1).AddHours(23).AddMinutes(59);
+                    break;
+
+                case "custom":
+                    if (!customDateFrom.HasValue || !customDateTo.HasValue)
+                        throw new ArgumentException("Custom date range requires both customDateFrom and customDateTo values.");
+
+                    dateFrom = customDateFrom.Value.Date;
+                    dateTo = customDateTo.Value.Date.AddHours(23).AddMinutes(59);
+                    break;
+
+                case "today":
+                default:
+                    dateFrom = now.Date;
+                    dateTo = now.Date.AddHours(23).AddMinutes(59);
+                    break;
+            }
+
+            return (dateFrom, dateTo);
         }
     }
 }

@@ -1,9 +1,12 @@
 ﻿@page "/dashboard"
 @using System.Globalization
 @using AdminPanel.Services
+@using AdminPanel.Shared.Models
 @using Microsoft.AspNetCore.Components.Authorization
 @inject NavigationManager NavigationManager
 @inject ApiAuthenticationStateProvider AuthStateProvider
+@inject ILoadEntityService LoadEntityService
+
 
 <AuthorizeView>
     <Authorized>
@@ -112,13 +115,13 @@
                         </HeaderContent>
                         <RowTemplate Context="campaign">
                             <MudTd DataLabel="Campaign">@campaign.Name</MudTd>
-                            <MudTd DataLabel="Views">@campaign.Views.ToString("N0")</MudTd>
-                            <MudTd DataLabel="Clicks">@campaign.Clicks.ToString("N0")</MudTd>
-                            <MudTd DataLabel="CTR %">@campaign.Ctr.ToString("0.0")</MudTd>
-                            <MudTd DataLabel="Sales">@campaign.Sales.ToString("N0")</MudTd>
-                            <MudTd DataLabel="CR %">@campaign.ConversionRate.ToString("0.0")</MudTd>
-                            <MudTd DataLabel="Revenue">@campaign.Revenue.ToString("N2")</MudTd>
-                            <MudTd DataLabel="ROAS %">@campaign.Roas.ToString("0.0")</MudTd>
+                            <MudTd DataLabel="Views">@campaign.Stats.Impressions.ToString("N0")</MudTd>
+                            <MudTd DataLabel="Clicks">@campaign.Stats.Clicks.ToString("N0")</MudTd>
+                            <MudTd DataLabel="CTR %">@campaign.Stats.Ecpm.ToString("0.0")</MudTd>
+                            <MudTd DataLabel="Sales">@campaign.Stats.ViewableImpressions.ToString("N0")</MudTd>
+                            <MudTd DataLabel="CR %">@campaign.Stats.Clicks.ToString("0.0")</MudTd>
+                            <MudTd DataLabel="Revenue">@campaign.Stats.Revenue.ToString("N2")</MudTd>
+                            <MudTd DataLabel="ROAS %">@campaign.Stats.Ctr.ToString("0.0")</MudTd>
                         </RowTemplate>
                     </MudTable>
                 </MudItem>
@@ -156,75 +159,97 @@
     private decimal Roas { get; set; } = 125.01m;
     private decimal RoasChange { get; set; } = -4.30m;
 
-    // Campaign data
-    private List<Campaign> Campaigns { get; set; } = new List<Campaign>
-    {
-        new Campaign
-        {
-            Name = "Brand promo",
-            Views = 3000,
-            Clicks = 45,
-            Ctr = 1.5m,
-            Sales = 4,
-            ConversionRate = 8.9m,
-            Revenue = 1234.50m,
-            Roas = 425.70m
-        },
-        new Campaign
-        {
-            Name = "Brand promo 1",
-            Views = 3000,
-            Clicks = 45,
-            Ctr = 1.5m,
-            Sales = 4,
-            ConversionRate = 8.9m,
-            Revenue = 1234.50m,
-            Roas = 425.70m
-        },
-        new Campaign
-        {
-            Name = "Brand promo 2",
-            Views = 3000,
-            Clicks = 45,
-            Ctr = 1.5m,
-            Sales = 4,
-            ConversionRate = 8.9m,
-            Revenue = 1234.50m,
-            Roas = 425.70m
-        },
-        new Campaign
-        {
-            Name = "Brand promo 3",
-            Views = 3000,
-            Clicks = 45,
-            Ctr = 1.5m,
-            Sales = 4,
-            ConversionRate = 8.9m,
-            Revenue = 1234.50m,
-            Roas = 425.70m
-        },
-        new Campaign
-        {
-            Name = "Brand promo 4",
-            Views = 3000,
-            Clicks = 45,
-            Ctr = 1.5m,
-            Sales = 4,
-            ConversionRate = 8.9m,
-            Revenue = 1234.50m,
-            Roas = 425.70m
-        }
-    };
+    private List<Campaign> Campaigns { get; set; } = new List<Campaign>();
 
-    public class Campaign
+
+    // Campaign data
+    // private List<Campaign> Campaigns { get; set; } = new List<Campaign>
+    // {
+    //     new Campaign
+    //     {
+    //         Name = "Brand promo",
+    //         Views = 3000,
+    //         Clicks = 45,
+    //         Ctr = 1.5m,
+    //         Sales = 4,
+    //         ConversionRate = 8.9m,
+    //         Revenue = 1234.50m,
+    //         Roas = 425.70m
+    //     },
+    //     new Campaign
+    //     {
+    //         Name = "Brand promo 1",
+    //         Views = 3000,
+    //         Clicks = 45,
+    //         Ctr = 1.5m,
+    //         Sales = 4,
+    //         ConversionRate = 8.9m,
+    //         Revenue = 1234.50m,
+    //         Roas = 425.70m
+    //     },
+    //     new Campaign
+    //     {
+    //         Name = "Brand promo 2",
+    //         Views = 3000,
+    //         Clicks = 45,
+    //         Ctr = 1.5m,
+    //         Sales = 4,
+    //         ConversionRate = 8.9m,
+    //         Revenue = 1234.50m,
+    //         Roas = 425.70m
+    //     },
+    //     new Campaign
+    //     {
+    //         Name = "Brand promo 3",
+    //         Views = 3000,
+    //         Clicks = 45,
+    //         Ctr = 1.5m,
+    //         Sales = 4,
+    //         ConversionRate = 8.9m,
+    //         Revenue = 1234.50m,
+    //         Roas = 425.70m
+    //     },
+    //     new Campaign
+    //     {
+    //         Name = "Brand promo 4",
+    //         Views = 3000,
+    //         Clicks = 45,
+    //         Ctr = 1.5m,
+    //         Sales = 4,
+    //         ConversionRate = 8.9m,
+    //         Revenue = 1234.50m,
+    //         Roas = 425.70m
+    //     }
+    // };
+
+    // public class Campaign
+    // {
+    //     public string Name { get; set; }
+    //     public int Views { get; set; }
+    //     public int Clicks { get; set; }
+    //     public decimal Ctr { get; set; }
+    //     public int Sales { get; set; }
+    //     public decimal ConversionRate { get; set; }
+    //     public decimal Revenue { get; set; }
+    //     public decimal Roas { get; set; }
+    // }
+
+    protected override async Task OnInitializedAsync()
     {
-        public string Name { get; set; }
-        public int Views { get; set; }
-        public int Clicks { get; set; }
-        public decimal Ctr { get; set; }
-        public int Sales { get; set; }
-        public decimal ConversionRate { get; set; }
-        public decimal Revenue { get; set; }
-        public decimal Roas { get; set; }
+        var advertisers = (await LoadEntityService.LoadAdvertisers()).Where(x => x.State == "Active").Select(x => x.Id).FirstOrDefault();
+        AdvertiserId = advertisers.ToString();
+
+        Campaigns = (await LoadEntityService.LoadCampaigns()).Where(x => x.State == "Active").ToList();
+
+        var campaignStats = (await LoadEntityService.LoadCampaignStats(SelectedPeriod)).ToList();
+
+        foreach (var campaign in Campaigns)
+        {
+            var matchingStats = campaignStats.FirstOrDefault(stats => stats.Id == campaign.Id);
+            if (matchingStats != null)
+            {
+                campaign.Stats = matchingStats;
+            }
+        }
     }
 }
