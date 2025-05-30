@@ -1,11 +1,13 @@
 ﻿@page "/register"
 @using AdminPanel.Services
+@using AdminPanel.Shared.Models
 @using Microsoft.AspNetCore.Components.Authorization
 @using System.Net.Http.Json
 @using System.ComponentModel.DataAnnotations
 @inject NavigationManager NavigationManager
 @inject ApiAuthenticationStateProvider AuthStateProvider
 @inject ILocalStorageService LocalStorage
+@inject ILoadEntityService LoadEntityService
 @inject HttpClient Http
 @inject ISnackbar Snackbar
 
@@ -73,6 +75,45 @@
                 errorMessage = null;
 
                 var response = await Http.PostAsJsonAsync("api/auth/register", registerModel);
+                var createAdvertiser = new Advertiser()
+                    {
+                        Name = registerModel.VendorId,
+                        State = "Active",
+                        Description = registerModel.VendorId,
+                    };
+                var advertiser = await Http.GetFromJsonAsync<Advertiser>($"api/advertiser/{createAdvertiser}");
+                var createNewUser = new CreateUserModel()
+                    {
+                        Email = registerModel.Email,
+                        UserName = registerModel.VendorId,
+                        Password = registerModel.Password,
+                        RoleType = 2,
+                        AdvertiserIds = new List<int>(){ advertiser.Id },
+                        CustomAdvertisers = true,
+                        IsBookkeeper = true,
+                        NewAdvertiserIsAvailable = 1,
+                        State = "Stopped",
+                        SubscriptionId = advertiser.TradeDeskId,
+                        SubscriptionType = "Trading Desk"
+                    };
+
+                var user = await LoadEntityService.SaveUser(createNewUser);
+
+                var permissions = new PermissionCommand()
+                    {
+                        SubscriptionId = advertiser.TradeDeskId,
+                        Permissions = PermissionObject.LoadAll().Permissions,
+                    };
+
+                if ((await LoadEntityService.SaveUser(createNewUser)).IsSuccessStatusCode)
+                {
+                    //permissions.UserId = 
+                }
+
+                
+
+                var res = await Http.PostAsJsonAsync<PermissionCommand>("/api/permission", permissions);
+
                 if (response.IsSuccessStatusCode)
                 {
                     Snackbar.Add("Registration successful. Please log in.", Severity.Success);

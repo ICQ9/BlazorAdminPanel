@@ -15,11 +15,13 @@ namespace AdminPanel.Services
 
         Task<IEnumerable<Profile>> LoadProfiles();
 
-        Task<IEnumerable<Shared.Models.Campaign>> LoadCampaigns();
+        Task<IEnumerable<Campaign>> LoadCampaigns();
+        Task<Campaign> LoadCampaignsById(int campaignId);
 
         Task<IEnumerable<ProductFormatResponse>> LoadProductFormat(int campaignId);
         Task<IEnumerable<ProductFeed>> LoadProductFeed(int clientId);
         Task<Advertiser> LoadAdvertiserById(int advId);
+        Task<SaveProfileModel> LoadProfileById(int profileId);
 
         Task<IEnumerable<CampaignStats>> LoadCampaignStats(string selectedPeriod);
 
@@ -27,6 +29,7 @@ namespace AdminPanel.Services
         
         Task<HttpResponseMessage> SaveTeaserFeedItem(FeedAdItem feedAdItem);
         Task<HttpResponseMessage> SaveProfile(SaveProfileModel profile);
+        Task<HttpResponseMessage> SaveUser(CreateUserModel user);
 
         Task<UserInfo> LoadUserInfo();
     }
@@ -104,10 +107,16 @@ namespace AdminPanel.Services
 
         }
 
-        public async Task<IEnumerable<Shared.Models.Campaign>> LoadCampaigns()
+        public async Task<IEnumerable<Campaign>> LoadCampaigns()
         {
             return await SafeApiCallAsync(async client =>
-               await client.GetFromJsonAsync<IEnumerable<Shared.Models.Campaign>>("/api/campaign/list"));
+               await client.GetFromJsonAsync<IEnumerable<Campaign>>("/api/campaign/list"));
+
+        }
+        public async Task<Campaign> LoadCampaignsById(int campaignId)
+        {
+            return await SafeApiCallAsync(async client =>
+               await client.GetFromJsonAsync<Campaign>($"/api/campaign/{campaignId}"));
 
         }
 
@@ -127,6 +136,11 @@ namespace AdminPanel.Services
             return await SafeApiCallAsync(async client =>
                 await client.GetFromJsonAsync<Advertiser>($"api/advertiser/{advId}"));
         }
+        public async Task<SaveProfileModel> LoadProfileById(int profileId)
+        {
+            return await SafeApiCallAsync(async client =>
+                await client.GetFromJsonAsync<SaveProfileModel>($"api/profile/{profileId}/info"));
+        }
 
         public async Task<HttpResponseMessage> SaveCreative(SaveCreativeModel creative)
         {
@@ -144,6 +158,11 @@ namespace AdminPanel.Services
         {
             return await SafeApiCallAsync(async client => 
                 await client.PostAsJsonAsync("api/profile", profile));
+        }
+        public async Task<HttpResponseMessage> SaveUser(CreateUserModel user)
+        {
+            return await SafeApiCallAsync(async client => 
+                await client.PostAsJsonAsync("/api/trading-desk/0/user", user));
         }
 
         public async Task<IEnumerable<CampaignStats>> LoadCampaignStats(string selectedPeriod)

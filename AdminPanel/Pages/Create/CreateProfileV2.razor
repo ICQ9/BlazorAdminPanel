@@ -15,7 +15,7 @@
 @inject IDialogService DialogService
 
 
-<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+<MudContainer MaxWidth="MaxWidth.Large" Class="d-flex align-center justify-space-between pa-4 pb-2">
     @if (_loadingData)
     {
         <div class="blur-overlay">
@@ -23,8 +23,7 @@
         </div>
     }
 
-    <MudPaper Class="pa-4">
-        <MudStepper @bind-ActiveIndex="_index" OnPreviewInteraction="OnPreviewInteraction">
+    <MudStepper @bind-ActiveIndex="_index" OnPreviewInteraction="OnPreviewInteraction">
             <MudStep Title="Fill Basic Profile Information">
                 <ProfileBaseForm @bind-Model="newProfile" OnFormRefReady="@(form => FormRef = form)" />
             </MudStep>
@@ -125,7 +124,6 @@
                 <EventPriceForm @bind-Model="newProfile" OnFormRefReady="@(form => FormRef = form)" />
             </MudStep>
         </MudStepper>
-    </MudPaper>
 </MudContainer>
 
 @code {
