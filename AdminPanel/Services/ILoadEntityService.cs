@@ -27,7 +27,8 @@ namespace AdminPanel.Services
         
         Task<HttpResponseMessage> SaveTeaserFeedItem(FeedAdItem feedAdItem);
         Task<HttpResponseMessage> SaveProfile(SaveProfileModel profile);
-        
+
+        Task<UserInfo> LoadUserInfo();
     }
 
     public class LoadEntityService : ILoadEntityService
@@ -155,6 +156,12 @@ namespace AdminPanel.Services
 
             return await SafeApiCallAsync(async client =>
                await client.GetFromJsonAsync<IEnumerable<CampaignStats>>("api/campaign/stats?dateFrom=2025-05-06T00:00:00&dateTo=2025-05-12T23:59:00&currencyType=Network&timeZoneType=Network"));
+        }
+
+        public async Task<UserInfo> LoadUserInfo()
+        {
+            return await SafeApiCallAsync(async client =>
+            await client.GetFromJsonAsync<UserInfo>("api/subscription/user-info"));
         }
 
         private (DateTime dateFrom, DateTime dateTo) GetDateRangeFromPeriod(string period, DateTime? customDateFrom, DateTime? customDateTo)

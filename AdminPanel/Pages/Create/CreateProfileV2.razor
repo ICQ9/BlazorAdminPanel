@@ -1,4 +1,5 @@
-﻿@using System.ComponentModel.DataAnnotations
+@page "/profiles/createV2"
+@using System.ComponentModel.DataAnnotations
 @using System.IO
 @using AdminPanel.Services
 @using AdminPanel.Shared.Models
@@ -8,19 +9,21 @@
 @using FluentValidation
 @inject ISnackbar Snackbar
 @inject ILoadEntityService LoadEntityService
-@inject IDialogService DialogService
+@inject ILocalStorageService LocalStorageService
+@inject NavigationManager NavigationManager
 @inject HttpClient Http
+@inject IDialogService DialogService
 
 
-<MudDialog>
-    <DialogContent>
-        @if (_loadingData)
-        {
-            <div class="blur-overlay">
-                <MudProgressCircular Color="Color.Primary" Style="width: 170px; height: 170px" Indeterminate="true" />
-            </div>
-        }
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    @if (_loadingData)
+    {
+        <div class="blur-overlay">
+            <MudProgressCircular Color="Color.Primary" Style="width: 170px; height: 170px" Indeterminate="true" />
+        </div>
+    }
 
+    <MudPaper Class="pa-4">
         <MudStepper @bind-ActiveIndex="_index" OnPreviewInteraction="OnPreviewInteraction">
             <MudStep Title="Fill Basic Profile Information">
                 <ProfileBaseForm @bind-Model="newProfile" OnFormRefReady="@(form => FormRef = form)" />
@@ -36,7 +39,9 @@
                                     <MudTh>Price Model</MudTh>
                                 </HeaderContent>
                                 <RowTemplate>
-                                    <MudRadioGroup @bind-Value="newProfile.ProductFormatId"><MudRadio Value="@context.Id" Size="Size.Small"></MudRadio></MudRadioGroup>
+                                    <MudRadioGroup @bind-Value="newProfile.ProductFormatId">
+                                        <MudRadio Value="@context.Id" Size="Size.Small"></MudRadio>
+                                    </MudRadioGroup>
                                     <MudTd DataLabel="Name">@context.FormatName</MudTd>
                                     <MudTd DataLabel="Position">@context.PriceModel</MudTd>
                                 </RowTemplate>
@@ -56,7 +61,7 @@
                                         <MudText Typo="Typo.h6">Select Products</MudText>
                                         <MudSpacer />
                                         <MudTextField Immediate="true" @bind-Value="searchString1"
-                                                      Placeholder="Search" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
+                                        Placeholder="Search" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
                                     </ToolBarContent>
                                     <HeaderContent>
                                         <MudTh>Preview</MudTh>
@@ -101,69 +106,29 @@
                         <DragAndDropComponent OnFormDataGenerated="OnFormDataGenerated" />
                     </MudForm>
                 }
-
             </MudStep>
-            <MudStep Title="Setup Targeting" Disabled="_disabledv2">
+            <MudStep Title="Setup Targeting" Disabled="_disabled">
                 <MudPaper Class="pa-4 my-4" Elevation="0" Outlined="true">
                     <MudText Typo="Typo.subtitle1" Class="mb-2">Targetings</MudText>
                     <MudList T="TargetingType" Dense="true">
                         @foreach (var targetingType in Enum.GetValues<TargetingType>())
                         {
-                            <MudListItem OnClick="@(() => OpenTargetingDialog(targetingType))"
-                                         Text="@targetingType.ToString()"
-                                         Icon="@GetTargetingIcon(targetingType)">
+                            <MudListItem OnClick="@(() => NavigateToTargeting(targetingType))"
+                            Text="@GetTargetingText(targetingType)"
+                            Icon="@GetTargetingIcon(targetingType)">
                             </MudListItem>
                         }
                     </MudList>
                 </MudPaper>
             </MudStep>
-
-            @* <GeoTargetingDialog @bind-IsVisible="_geoDialogOpen" *@
-            @*                     GeoTargeting="_geoTargeting" *@
-            @*                     OnSave="HandleGeoTargetingSave" *@
-            @*                     OnCancel="HandleGeoTargetingCancel" /> *@
-
-
-
             <MudStep Title="Setup Price" Disabled="_disabled">
-                <MudPaper Class="pa-4 my-4" Elevation="0" Outlined="true">
-                    <MudGrid>
-                        <MudItem xs="6">
-                            <div class="d-flex align-center">
-                                <MudText Class="ml-1">Event Price</MudText>
-                                <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Class="ml-1" />
-                            </div>
-                            <MudTextField T="decimal"
-                                          Value="@newProfile.EventPrice"
-                                          ValueChanged="@((decimal val) => newProfile.EventPrice = val)"
-                                          Margin="Margin.Dense"
-                                          Class="mt-1 ml-6" />
-                        </MudItem>
-                        <MudItem xs="6" Class="d-flex align-center justify-end">
-                            <div>
-                                <MudText Class="mb-1 text-center">Recommended price</MudText>
-                                <MudText Color="Color.Warning" Class="text-center">@newProfile.EventPrice USD</MudText>
-                            </div>
-                            <MudText Typo="Typo.h5" Class="mx-4">≥</MudText>
-                        </MudItem>
-                    </MudGrid>
-                </MudPaper>
+                <EventPriceForm @bind-Model="newProfile" OnFormRefReady="@(form => FormRef = form)" />
             </MudStep>
         </MudStepper>
-    </DialogContent>
-    @*<DialogActions>
-        <MudButton OnClick="Cancel">Cancel</MudButton>
-        <MudButton Color="Color.Primary" OnClick="Submit">Ok</MudButton>
-    </DialogActions>*@
-</MudDialog>
+    </MudPaper>
+</MudContainer>
+
 @code {
-
-    [Parameter] public bool Disabled { get; set; }
-
-    private bool _disabledv2 => Disabled;
-    private bool _geoDialogOpen;
-    //private GeoTargeting _geoTargeting = new();
-
     private bool _loadingData = true;
     private bool _error;
     private bool _completed;
@@ -189,24 +154,79 @@
     private Advertiser selectedAdvertiser = new Advertiser();
     private HashSet<ProductFeedItem> selectedFeedItems = new HashSet<ProductFeedItem>();
     private FeedAdItem feedAdItem = new FeedAdItem();
+    private GeoLocalTargeting geoTargeting = new GeoLocalTargeting();
     private int creativeId;
     private int createdProfileId;
 
     private int _index;
-    [CascadingParameter] IMudDialogInstance MudDialog { get; set; }
-    [Parameter] public string Title { get; set; } = "Create Profile";
 
-    private void HandleGeoTargetingCancel()
+    private List<CpmData> cpmDataList = new List<CpmData>
     {
-        _geoDialogOpen = false;
+        new CpmData { Percent = 5.0, Cpm = 0.7435 },
+        new CpmData { Percent = 10.0, Cpm = 1.0674 },
+        new CpmData { Percent = 15.0, Cpm = 1.1713 },
+        new CpmData { Percent = 20.0, Cpm = 1.4205 },
+        new CpmData { Percent = 25.0, Cpm = 1.5326 },
+    };
+
+    private async Task OpenGeoTargeting()
+    {
+        var parameters = new DialogParameters
+        {
+            { "GeoTargeting", geoTargeting }
+        };
+        var options = new DialogOptions
+            {
+                MaxWidth = MaxWidth.Medium,
+                FullWidth = true,
+                CloseButton = true,
+                BackdropClick = false,
+                BackgroundClass = "backdrop-blur",
+            //Class = "geo-targeting-modal"
+            };
+
+        var dialog = await DialogService.ShowAsync<Components.Targetings.GeoTargeting>("",parameters, options);
+        var result = await dialog.Result;
+
+        if (result.Data != null)
+        {
+            geoTargeting = result.Data as GeoLocalTargeting ?? new GeoLocalTargeting();
+        }
     }
 
-    // private void HandleGeoTargetingSave(GeoTargeting geoTargeting)
-    // {
-    //     _geoTargeting = geoTargeting;
-    //     _geoDialogOpen = false;
-    //     Save logic here
-    // }
+    private async void NavigateToTargeting(TargetingType type)
+    {
+        switch (type)
+        {
+            case TargetingType.Geo:
+                await OpenGeoTargeting();
+                break;
+            default:
+                break;
+        }
+        StateHasChanged();
+        //NavigationManager.NavigateTo($"/create-profile/targeting/{type.ToString().ToLower()}");
+    }
+
+    private string GetTargetingText(TargetingType targetingType)
+    {
+        switch (targetingType)
+        {
+            case TargetingType.Geo:
+                var count = geoTargeting?.IncludedLocations?.Count ?? 0;
+                return count > 0
+                    ? $"Geo ({count} location{(count != 1 ? "s" : "")})"
+                    : "Geo";
+
+            case TargetingType.Device:
+                // Add similar logic for other targeting types if needed
+                return "Device";
+
+            default:
+                return targetingType.ToString();
+        }
+
+    }
 
     private string GetTargetingIcon(TargetingType type)
     {
@@ -221,19 +241,6 @@
         };
     }
 
-    private void OpenTargetingDialog(TargetingType type)
-    {
-        switch (type)
-        {
-            case TargetingType.Geo:
-                _geoDialogOpen = true;
-                break;
-            // Handle other targeting types
-            default:
-                break;
-        }
-    }
-
     private bool FilterFunc1(ProductFeedItem feedItem) => FilterFunc(feedItem, searchString1);
 
     private bool FilterFunc(ProductFeedItem feedItem, string searchString)
@@ -244,15 +251,6 @@
             return true;
         return false;
     }
-
-    private async void Submit()
-    {
-
-        MudDialog.Close(DialogResult.Ok(true));
-    }
-
-
-    private void Cancel() => MudDialog.Cancel();
 
     private async Task OnPreviewInteraction(StepperInteractionEventArgs arg)
     {
@@ -267,19 +265,22 @@
             }
         }
         _loadingData = true;
-        StateHasChanged();     // <- оновлює UI *негайно*
+        StateHasChanged();
 
         if (arg.Action == StepAction.Complete)
         {
             await ControlStepCompletion(arg);
         }
         _loadingData = false;
-
-
     }
 
     protected override async Task OnInitializedAsync()
     {
+        var token = await GetToken();
+        if (!string.IsNullOrWhiteSpace(token))
+        {
+            Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        }
         _loadingData = false;
     }
 
@@ -327,10 +328,6 @@
                     await LoadProductFormats(campaignId);
                     await LoadAdvertiserById(selectedCampaign.AdvertiserId);
                 }
-                else
-                {
-                    //TODO: Logic if no campains
-                }
                 break;
             case 1:
                 await SetupProductFormatToProfile(newProfile.ProductFormatId);
@@ -342,29 +339,27 @@
                 await LoadRecomendedPrice();
                 break;
             case 3:
-                //TODO: Get all entities and go create into DB
-                // bool okProfile = await SaveProfile();
-                // bool okItem = await SaveAdItem();
-                //@inject ISnackbar Snackbar
-                //
-                MudDialog.Close(DialogResult.Ok(true));
-                Snackbar.Add("Create sucsess", MudBlazor.Severity.Success);
+                // Handle targeting step
+                break;
+            case 4:
+                // Save profile and redirect to success page
+                await SaveProfile();
+                NavigationManager.NavigateTo("/profiles");
+                Snackbar.Add("Profile created successfully", MudBlazor.Severity.Success);
+                break;
+            case 5:
                 break;
         }
     }
 
     private async Task SetupCreativeStep(StepperInteractionEventArgs arg)
     {
-        //var createProfileResult = (await LoadEntityService.SaveProfile(newProfile));
-
-        //var json = await createProfileResult.Content.ReadAsStringAsync();
-        var (result, eror) = await SetupCreative();
+        var (result, error) = await SetupCreative();
         if (!result)
         {
-            await DialogService.ShowMessageBox("Error", eror);
+            Snackbar.Add(error, MudBlazor.Severity.Error);
             arg.Cancel = true;
         }
-
     }
 
     private async Task<(bool, string)> SetupCreative()
@@ -379,31 +374,19 @@
                 feedAdItem.Name = "TeaserFeed";
                 feedAdItem.ProfileId = createdProfileId;
                 feedAdItem.StaticRules = new StaticRules()
-                    {
-                        ItemId = selectedFeedItems.Select(x => x.ItemId).ToList(),
-                    };
-                //var result = await LoadEntityService.SaveTeaserFeedItem(feedAdItem: feedAdItem);
-                // if (!result.IsSuccessStatusCode)
-                // {
-                //     return (false, result.ReasonPhrase);
-                // }
+                {
+                    ItemId = selectedFeedItems.Select(x => x.ItemId).ToList(),
+                };
             }
             return (true, "");
         }
         else
         {
-            //TODO: Check available template
             newCreative.AdvertiserId = selectedAdvertiser.Id;
             newCreative.AdvertiserUrl = $"htps://{selectedAdvertiser.AdvertiserUrl}";
             newCreative.State = "Active";
             newCreative.TemplateId = 1;
             newCreative.LandingPageType = "Web";
-
-            // var result = await LoadEntityService.SaveCreative(newCreative);
-            // if (!result.IsSuccessStatusCode)
-            // {
-            //     return (false, result.ReasonPhrase);
-            // }
             return (true, "");
         }
     }
@@ -411,17 +394,17 @@
     private async Task LoadRecomendedPrice()
     {
         var filters = new Filters()
-            {
-                ProductFormatId = newProfile.ProductFormatId,
-                DspId = selectedCampaign.AdvertiserId,
-                Currency = newProfile.Currency,
-                DateFrom = DateTime.Now.AddDays(-7),
-                DateTo = DateTime.Today,
-                MaxViewability = 100,
-            };
+        {
+            ProductFormatId = newProfile.ProductFormatId,
+            DspId = selectedCampaign.AdvertiserId,
+            Currency = newProfile.Currency,
+            DateFrom = DateTime.Now.AddDays(-7),
+            DateTo = DateTime.Today,
+            MaxViewability = 100,
+        };
 
         var body = new RecomendedPrice() { Filters = filters };
-
+        //var resp = await Http.PostAsJsonAsync($"api/profile/calculator?productFormatId={newProfile.ProductFormatId}&campaignId={newProfile.CampaignId}");
         var response = await Http.PostAsJsonAsync($"api/product-format/stats/simple-bidder/cpm", body);
     }
 
@@ -450,4 +433,16 @@
         uploadFileFormData = formData.FirstOrDefault();
         uploadFileFormData.CreativeId = creativeId;
     }
-}
+
+    private async Task SaveProfile()
+    {
+        // Implement profile saving logic here
+        // await LoadEntityService.SaveProfile(newProfile);
+    }
+
+    private async Task<string> GetToken()
+    {
+        return await LocalStorageService.GetItemAsync("access_token");
+
+    }
+} 

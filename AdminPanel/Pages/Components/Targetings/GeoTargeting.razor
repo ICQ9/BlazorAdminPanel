@@ -1,0 +1,328 @@
+﻿@*@page "/create-profile/targeting/geov2" *@
+@using System.ComponentModel.DataAnnotations
+@using System.IO
+@using AdminPanel.Services
+@using AdminPanel.Shared.Models
+@using AdminPanel.Pages.Components
+@using System.Net.Http.Headers
+@using System.Text.Json
+@using FluentValidation
+@inject ISnackbar Snackbar
+@inject ILoadEntityService LoadEntityService
+@inject ILocalStorageService LocalStorageService
+@inject NavigationManager NavigationManager
+@inject HttpClient Http
+
+<MudDialog>
+    <DialogContent>
+        <MudContainer Class="pa-0">
+            <MudGrid Class="ma-0">
+                <!-- Header -->
+                <MudItem xs="12" Class="d-flex align-center justify-space-between pa-4 pb-2">
+                    <MudText Typo="Typo.h5">Geo</MudText>
+                    <div class="d-flex align-center gap-2">
+                        <MudIconButton Icon="@Icons.Material.Outlined.Help" 
+                        Size="Size.Small"/>
+                        <MudIconButton Icon="@Icons.Material.Filled.Close" 
+                        Size="Size.Small"
+                        OnClick="Cancel"/>
+                    </div>
+                </MudItem>
+
+                <!-- Info Message -->
+                <MudItem xs="12" Class="px-4 pb-3">
+                    <MudAlert Severity="MudBlazor.Severity.Info" 
+                    Dense="true" 
+                    Class="pa-2">
+                        <MudText Typo="Typo.body2">
+                            <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Style="vertical-align: middle; margin-right: 8px;"/>
+                            Targeting must be saved on the Profile blade
+                        </MudText>
+                    </MudAlert>
+                </MudItem>
+
+                <!-- Type Selection -->
+                <MudItem xs="12" Class="px-4 pb-3">
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">Type</MudText>
+                    <MudButtonGroup Variant="Variant.Filled" 
+                    OverrideStyles="false"
+                    Class="w-100">
+                        <MudButton Color="@(geoTargeting.TargetingType == "Local" ? Color.Success : Color.Default)"
+                        OnClick="@(() => geoTargeting.TargetingType = "Local")"
+                        Class="flex-grow-1">
+                            LOCAL
+                        </MudButton>
+                        <MudButton Color="@(geoTargeting.TargetingType == "HyperLocal" ? Color.Success : Color.Default)"
+                        OnClick="@(() => geoTargeting.TargetingType = "HyperLocal")"
+                        Class="flex-grow-1">
+                            HYPERLOCAL
+                        </MudButton>
+                        <MudButton Color="@(geoTargeting.TargetingType == "Mixed" ? Color.Success : Color.Default)"
+                        OnClick="@(() => geoTargeting.TargetingType = "Mixed")"
+                        Class="flex-grow-1">
+                            MIXED
+                        </MudButton>
+                    </MudButtonGroup>
+                </MudItem>
+
+                <!-- Helper Text -->
+                <MudItem xs="12" Class="px-4 pb-3">
+                    <MudText Typo="Typo.caption" Style="line-height: 1.5;">
+                        Adjust ad delivery to the specific region. Start typing to search for a necessary country/region/city from the existed ones
+                    </MudText>
+                </MudItem>
+
+                <!-- Search Section -->
+                <MudItem xs="12" Class="px-4 pb-3">
+                    <MudGrid>
+                        <MudItem xs="6" Class="pr-2">
+                            <MudTextField 
+                            Label="Search" 
+                            Placeholder="Search locations..."
+                            Variant="Variant.Outlined"
+                            Margin="Margin.Dense"
+                            Immediate="true"
+                            ValueChanged="((string newValue) => OnSearchLocation(newValue))"
+                            AdornmentIcon="@Icons.Material.Filled.Search"
+                            Adornment="Adornment.End"/>
+                        </MudItem>
+                        <MudItem xs="6" Class="pl-2">
+                            <MudTextField Value="@GetSelectedSummary()" 
+                            Label="Search" 
+                            ReadOnly="true"
+                            Variant="Variant.Outlined"
+                            Margin="Margin.Dense"
+                            AdornmentIcon="@Icons.Material.Filled.Search"
+                            Adornment="Adornment.End"/>
+                        </MudItem>
+                    </MudGrid>
+                </MudItem>
+
+                <!-- Search Results (shown when searching) -->
+                @if (_loadingLocations)
+                {
+                    <MudItem xs="12" Class="px-4 pb-3 d-flex justify-center">
+                        <MudProgressCircular Color="Color.Primary" Size="Size.Small" Indeterminate="true" />
+                    </MudItem>
+                }
+                else if (availableLocations.Any() && !string.IsNullOrWhiteSpace(searchLocation))
+                {
+                    <MudItem xs="12" Class="px-4 pb-3">
+                        <MudPaper Elevation="1" Class="pa-2" Style="max-height: 200px; overflow-y: auto;">
+                            @foreach (var location in availableLocations.Take(10))
+                            {
+                                <MudListItem T="string" Dense="true"
+                                Style="cursor: pointer;"
+                                OnClick="@(() => AddLocation(location, true))">
+                                    <div class="d-flex justify-space-between align-center">
+                                        <MudText Typo="Typo.body2">@location.Name (@location.GeoType)</MudText>
+                                        <MudIconButton Icon="@Icons.Material.Filled.Add" 
+                                        Size="Size.Small"
+                                        Color="Color.Success"
+                                        OnClick="@(() => AddLocation(location, true))" />
+                                    </div>
+                                </MudListItem>
+                            }
+                        </MudPaper>
+                    </MudItem>
+                }
+
+                <!-- Selected Locations -->
+                <MudItem xs="12" Class="px-4 pb-4">
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">
+                        All added to targeting
+                    </MudText>
+                    @if (geoTargeting.IncludedLocations.Any())
+                    {
+                        <MudPaper Elevation="1" Class="pa-2" Style="max-height: 300px; overflow-y: auto;">
+                            @foreach (var location in geoTargeting.IncludedLocations)
+                            {
+                                <MudListItem T="string" Dense="true">
+                                    <div class="d-flex justify-space-between align-center">
+                                        <div class="d-flex align-center gap-2">
+                                            <MudChip T="string" Size="Size.Small" 
+                                            Color="@(location.IsIncluded ? Color.Success : Color.Error)"
+                                            Style="height: 20px; font-size: 0.75rem;">
+                                                @(location.IsIncluded ? "Include" : "Exclude")
+                                            </MudChip>
+                                            <MudText Typo="Typo.body2">
+                                                @location.Location.Name (@location.Location.GeoType)
+                                            </MudText>
+                                        </div>
+                                        <div class="d-flex align-center gap-1">
+                                            <MudIconButton Icon="@Icons.Material.Filled.SwapVert" 
+                                            Size="Size.Small"
+                                            Color="Color.Default"
+                                            OnClick="@(() => location.IsIncluded = !location.IsIncluded)"/>
+                                            <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                                            Size="Size.Small"
+                                            Color="Color.Error"
+                                            OnClick="@(() => RemoveLocation(location))"/>
+                                        </div>
+                                    </div>
+                                </MudListItem>
+                            }
+                        </MudPaper>
+                    }
+                    else
+                    {
+                        <MudPaper Elevation="1" Class="pa-8 text-center">
+                            <MudText Typo="Typo.body2" Color="Color.Default">
+                                No locations selected
+                            </MudText>
+                        </MudPaper>
+                    }
+                </MudItem>
+            </MudGrid>
+        </MudContainer>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" 
+        Variant="Variant.Text" 
+        Color="Color.Default">
+            Cancel
+        </MudButton>
+        <MudButton OnClick="SaveAndReturn" 
+        Variant="Variant.Filled" 
+        Color="Color.Primary"
+        Disabled="@(!IsValid())"
+        Class="ml-2">
+            Save
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; }
+
+    public enum TargetingsGeoType
+    {
+        Country = 0,
+        Region = 1,
+        City = 2
+    }
+
+    [Parameter] public GeoLocalTargeting geoTargeting { get; set; } = new GeoLocalTargeting();
+    //private GeoLocalTargeting geoTargeting = new GeoLocalTargeting();
+    private string searchLocation = "";
+    private List<AvailableGeo> availableLocations = new List<AvailableGeo>();
+    private bool _loadingLocations = false;
+    private System.Timers.Timer _searchTimer;
+
+    protected override void OnInitialized()
+    {
+        _searchTimer = new System.Timers.Timer(500);
+        _searchTimer.Elapsed += async (sender, e) => await SearchLocations();
+        _searchTimer.AutoReset = false;
+    }
+
+    private string GetButtonStyle(string buttonType)
+    {
+        if (geoTargeting.TargetingType == buttonType)
+        {
+            return "background-color: #4caf50; color: white; border-radius: 4px;";
+        }
+        return "background-color: #444; color: #888; border-radius: 4px;";
+    }
+
+    private string GetSelectedSummary()
+    {
+        var count = geoTargeting.IncludedLocations.Count;
+        if (count == 0) return "";
+        return $"{count} location{(count != 1 ? "s" : "")} selected";
+    }
+
+    private void OnSearchLocation(string value)
+    {
+        searchLocation = value;
+        _searchTimer.Stop();
+        _searchTimer.Start();
+    }
+
+    private async Task SearchLocations()
+    {
+        if (string.IsNullOrWhiteSpace(searchLocation))
+        {
+            availableLocations.Clear();
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+
+        try
+        {
+            _loadingLocations = true;
+            await InvokeAsync(StateHasChanged);
+
+            availableLocations = await GetGeoLocations(searchLocation);
+        }
+        finally
+        {
+            _loadingLocations = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void AddLocation(AvailableGeo location, bool isIncluded)
+    {
+        if (!geoTargeting.IncludedLocations.Any(x => x.Location.Abbr == location.Abbr))
+        {
+            geoTargeting.IncludedLocations.Add(new GeoLocation 
+            { 
+                Location = location, 
+                IsIncluded = isIncluded 
+            });
+            //searchLocation = "";
+            //availableLocations.Clear();
+
+            availableLocations.RemoveAt(availableLocations.IndexOf(location));
+        }
+    }
+
+    private void RemoveLocation(GeoLocation location)
+    {
+        geoTargeting.IncludedLocations.Remove(location);
+        availableLocations.Add(location.Location);
+    }
+
+    private async Task<List<AvailableGeo>> GetGeoLocations(string search)
+    {
+        var token = await LocalStorageService.GetItemAsync("access_token");
+        if (!string.IsNullOrWhiteSpace(token))
+        {
+            Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        }
+        try
+        {
+            if (string.IsNullOrWhiteSpace(search))
+                return new List<AvailableGeo>();
+            
+            var response = await Http.GetFromJsonAsync<List<AvailableGeo>>($"api/targeting/geo?search={search}");
+            return response ?? new List<AvailableGeo>();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading locations: {ex.Message}", MudBlazor.Severity.Error);
+            return new List<AvailableGeo>();
+        }
+    }
+
+    private bool IsValid()
+    {
+        return !string.IsNullOrEmpty(geoTargeting.TargetingType) && geoTargeting.IncludedLocations.Any();
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void SaveAndReturn()
+    {
+        MudDialog.Close(DialogResult.Ok(geoTargeting));
+    }
+
+    public void Dispose()
+    {
+        _searchTimer?.Dispose();
+    }
+
+
+}

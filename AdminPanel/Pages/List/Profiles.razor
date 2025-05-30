@@ -116,25 +116,26 @@
 
     private async Task OpenDialogAsync()
     {
-        var options = new DialogOptions
-            {
-                CloseOnEscapeKey = true,
-                MaxWidth = MaxWidth.Large,
-                FullWidth = true,
-                CloseButton = true,
-                BackdropClick = false,
-                Position = DialogPosition.Center,
-                BackgroundClass = "backdrop-blur"
-            };
+        Navigation.NavigateTo("profiles/createV2");
+        // var options = new DialogOptions
+        //     {
+        //         CloseOnEscapeKey = true,
+        //         MaxWidth = MaxWidth.Large,
+        //         FullWidth = true,
+        //         CloseButton = true,
+        //         BackdropClick = false,
+        //         Position = DialogPosition.Center,
+        //         BackgroundClass = "backdrop-blur"
+        //     };
 
-        var dialog = await DialogService.ShowAsync<CreateProfileDialog>("Create New Profile", options);
+        // var dialog = await DialogService.ShowAsync<CreateProfileDialog>("Create New Profile", options);
 
-        var result = await dialog.Result;
+        // var result = await dialog.Result;
 
-        if (!result.Canceled)
-        {
-            profiles = (await LoadEntityService.LoadProfiles()).ToList();
-        }
+        // if (!result.Canceled)
+        // {
+        //     profiles = (await LoadEntityService.LoadProfiles()).ToList();
+        // }
     }
 
     private bool SearchProfile(Profile element) => FilterFunc(element, searchProfile);

@@ -2,107 +2,141 @@
 @using System.Globalization
 @using AdminPanel.Services
 @using AdminPanel.Shared.Models
+@using AdminPanel.Shared.Models.Entity
 @using Microsoft.AspNetCore.Components.Authorization
 @inject NavigationManager NavigationManager
 @inject ApiAuthenticationStateProvider AuthStateProvider
 @inject ILoadEntityService LoadEntityService
-
 
 <AuthorizeView>
     <Authorized>
         <PageTitle>Dashboard</PageTitle>
 
         <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+            @if (_isLoading)
+            {
+                <MudOverlay Visible="true" Absolute="false">
+                    <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
+                </MudOverlay>
+            }
+
             <MudGrid>
+                <!-- Header Section -->
                 <MudItem xs="12">
                     <MudPaper Class="pa-4">
                         <MudGrid>
                             <MudItem xs="12" md="6">
-                                <MudText Typo="Typo.h6">Advertiser ID: @AdvertiserId</MudText>
-                                <MudText Typo="Typo.body1">Balance: @Balance.ToString("C2", new CultureInfo("en-US"))</MudText>
+                                <MudText Typo="Typo.h6">Advertiser ID: @_advertiserId</MudText>
+                                <MudText Typo="Typo.body1">Balance: @_balance.ToString("C2", new CultureInfo("en-US"))</MudText>
                             </MudItem>
                             <MudItem xs="12" md="6" Class="d-flex justify-end">
-                                <MudSelect T="string" Label="Period" @bind-Value="SelectedPeriod" Class="mt-0" Style="width: 200px;">
+                                <MudSelect T="string"
+                                Label="Period"
+                                Value="@_selectedPeriod"
+                                ValueChanged="@OnPeriodChanged"
+                                Class="mt-0"
+                                Style="width: 200px;"
+                                Disabled="@_isUpdatingStats">
                                     <MudSelectItem Value="@("today")">Today</MudSelectItem>
                                     <MudSelectItem Value="@("yesterday")">Yesterday</MudSelectItem>
                                     <MudSelectItem Value="@("last7days")">Last 7 Days</MudSelectItem>
                                     <MudSelectItem Value="@("last30days")">Last 30 Days</MudSelectItem>
                                     <MudSelectItem Value="@("thismonth")">This Month</MudSelectItem>
                                     <MudSelectItem Value="@("lastmonth")">Last Month</MudSelectItem>
-                                    <MudSelectItem Value="@("custom")">Custom Period</MudSelectItem>
                                 </MudSelect>
                             </MudItem>
                         </MudGrid>
                     </MudPaper>
                 </MudItem>
 
+                <!-- Metrics Overview -->
                 <MudItem xs="12">
                     <MudText Typo="Typo.h5" Class="mb-4">Metrics Overview</MudText>
                 </MudItem>
 
-                <MudItem xs="12" sm="6" md="4">
-                    <MudPaper Class="pa-4" Elevation="2">
-                        <MudText Typo="Typo.subtitle1">Ad Spend</MudText>
-                        <MudText Typo="Typo.h4">@AdSpend.ToString("N2")</MudText>
-                        <MudText Color="@(AdSpendChange > 0 ? Color.Success : Color.Error)">
-                            @(AdSpendChange > 0 ? "▲" : "▼") @Math.Abs(AdSpendChange).ToString("0.00")%
-                        </MudText>
-                    </MudPaper>
-                </MudItem>
+                @if (_isUpdatingStats)
+                {
+                    <MudItem xs="12" Class="d-flex justify-center py-4">
+                        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+                    </MudItem>
+                }
+                else
+                {
+                    <!-- Metric Cards -->
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudPaper Class="pa-4" Elevation="2">
+                            <MudText Typo="Typo.subtitle1">Ad Spend</MudText>
+                            <MudText Typo="Typo.h4" Class="metric-value">@FormatCurrency(_adSpend)</MudText>
+                            <MudText Color="@(_adSpendChange > 0 ? Color.Success : Color.Error)">
+                                @(_adSpendChange > 0 ? "▲" : "▼") @Math.Abs(_adSpendChange).ToString("0.00")%
+                            </MudText>
+                        </MudPaper>
+                    </MudItem>
 
-                <MudItem xs="12" sm="6" md="4">
-                    <MudPaper Class="pa-4" Elevation="2">
-                        <MudText Typo="Typo.subtitle1">Clicks</MudText>
-                        <MudText Typo="Typo.h4">@Clicks.ToString("N0")</MudText>
-                        <MudText Color="@(ClicksChange > 0 ? Color.Success : Color.Error)">
-                            @(ClicksChange > 0 ? "▲" : "▼") @Math.Abs(ClicksChange).ToString("0.00")%
-                        </MudText>
-                    </MudPaper>
-                </MudItem>
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudPaper Class="pa-4" Elevation="2">
+                            <MudText Typo="Typo.subtitle1">Clicks</MudText>
+                            <MudText Typo="Typo.h4" Class="metric-value">@FormatNumber(_clicks)</MudText>
+                            <MudText Color="@(_clicksChange > 0 ? Color.Success : Color.Error)">
+                                @(_clicksChange > 0 ? "▲" : "▼") @Math.Abs(_clicksChange).ToString("0.00")%
+                            </MudText>
+                        </MudPaper>
+                    </MudItem>
 
-                <MudItem xs="12" sm="6" md="4">
-                    <MudPaper Class="pa-4" Elevation="2">
-                        <MudText Typo="Typo.subtitle1">CTR %</MudText>
-                        <MudText Typo="Typo.h4">@Ctr.ToString("0.00")</MudText>
-                        <MudText Color="@(CtrChange > 0 ? Color.Success : Color.Error)">
-                            @(CtrChange > 0 ? "▲" : "▼") @Math.Abs(CtrChange).ToString("0.00")%
-                        </MudText>
-                    </MudPaper>
-                </MudItem>
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudPaper Class="pa-4" Elevation="2">
+                            <MudText Typo="Typo.subtitle1">CTR %</MudText>
+                            <MudText Typo="Typo.h4" Class="metric-value">@FormatPercent(_ctr)</MudText>
+                            <MudText Color="@(_ctrChange > 0 ? Color.Success : Color.Error)">
+                                @(_ctrChange > 0 ? "▲" : "▼") @Math.Abs(_ctrChange).ToString("0.00")%
+                            </MudText>
+                        </MudPaper>
+                    </MudItem>
 
-                <MudItem xs="12" sm="6" md="4">
-                    <MudPaper Class="pa-4" Elevation="2">
-                        <MudText Typo="Typo.subtitle1">Sales</MudText>
-                        <MudText Typo="Typo.h4">@Sales.ToString("N0")</MudText>
-                        <MudText Color="@(SalesChange > 0 ? Color.Success : Color.Error)">
-                            @(SalesChange > 0 ? "▲" : "▼") @Math.Abs(SalesChange).ToString("0.00")%
-                        </MudText>
-                    </MudPaper>
-                </MudItem>
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudPaper Class="pa-4" Elevation="2">
+                            <MudText Typo="Typo.subtitle1">Sales</MudText>
+                            <MudText Typo="Typo.h4" Class="metric-value">@FormatNumber(_sales)</MudText>
+                            <MudText Color="@(_salesChange > 0 ? Color.Success : Color.Error)">
+                                @(_salesChange > 0 ? "▲" : "▼") @Math.Abs(_salesChange).ToString("0.00")%
+                            </MudText>
+                        </MudPaper>
+                    </MudItem>
 
-                <MudItem xs="12" sm="6" md="4">
-                    <MudPaper Class="pa-4" Elevation="2">
-                        <MudText Typo="Typo.subtitle1">Revenue</MudText>
-                        <MudText Typo="Typo.h4">@Revenue.ToString("N2")</MudText>
-                        <MudText Color="@(RevenueChange > 0 ? Color.Success : Color.Error)">
-                            @(RevenueChange > 0 ? "▲" : "▼") @Math.Abs(RevenueChange).ToString("0.00")%
-                        </MudText>
-                    </MudPaper>
-                </MudItem>
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudPaper Class="pa-4" Elevation="2">
+                            <MudText Typo="Typo.subtitle1">Revenue</MudText>
+                            <MudText Typo="Typo.h4" Class="metric-value">@FormatCurrency(_revenue)</MudText>
+                            <MudText Color="@(_revenueChange > 0 ? Color.Success : Color.Error)">
+                                @(_revenueChange > 0 ? "▲" : "▼") @Math.Abs(_revenueChange).ToString("0.00")%
+                            </MudText>
+                        </MudPaper>
+                    </MudItem>
 
-                <MudItem xs="12" sm="6" md="4">
-                    <MudPaper Class="pa-4" Elevation="2">
-                        <MudText Typo="Typo.subtitle1">ROAS %</MudText>
-                        <MudText Typo="Typo.h4">@Roas.ToString("0.00")</MudText>
-                        <MudText Color="@(RoasChange > 0 ? Color.Success : Color.Error)">
-                            @(RoasChange > 0 ? "▲" : "▼") @Math.Abs(RoasChange).ToString("0.00")%
-                        </MudText>
-                    </MudPaper>
-                </MudItem>
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudPaper Class="pa-4" Elevation="2">
+                            <MudText Typo="Typo.subtitle1">ROAS %</MudText>
+                            <MudText Typo="Typo.h4" Class="metric-value">@FormatPercent(_roas)</MudText>
+                            <MudText Color="@(_roasChange > 0 ? Color.Success : Color.Error)">
+                                @(_roasChange > 0 ? "▲" : "▼") @Math.Abs(_roasChange).ToString("0.00")%
+                            </MudText>
+                        </MudPaper>
+                    </MudItem>
+                }
 
+                <!-- Active Campaigns -->
                 <MudItem xs="12">
                     <MudText Typo="Typo.h5" Class="my-4">Active Campaigns</MudText>
-                    <MudTable Items="@Campaigns" Dense="true" Hover="true" Bordered="true" Striped="true">
+                    @if (_isUpdatingStats)
+                    {
+                        <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+                    }
+                    <MudTable Items="@_campaigns"
+                    Dense="true"
+                    Hover="true"
+                    Bordered="true"
+                    Striped="true"
+                    Loading="@_isUpdatingStats">
                         <HeaderContent>
                             <MudTh>Campaign</MudTh>
                             <MudTh>Views</MudTh>
@@ -115,13 +149,13 @@
                         </HeaderContent>
                         <RowTemplate Context="campaign">
                             <MudTd DataLabel="Campaign">@campaign.Name</MudTd>
-                            <MudTd DataLabel="Views">@campaign.Stats.Impressions.ToString("N0")</MudTd>
-                            <MudTd DataLabel="Clicks">@campaign.Stats.Clicks.ToString("N0")</MudTd>
-                            <MudTd DataLabel="CTR %">@campaign.Stats.Ecpm.ToString("0.0")</MudTd>
-                            <MudTd DataLabel="Sales">@campaign.Stats.ViewableImpressions.ToString("N0")</MudTd>
-                            <MudTd DataLabel="CR %">@campaign.Stats.Clicks.ToString("0.0")</MudTd>
-                            <MudTd DataLabel="Revenue">@campaign.Stats.Revenue.ToString("N2")</MudTd>
-                            <MudTd DataLabel="ROAS %">@campaign.Stats.Ctr.ToString("0.0")</MudTd>
+                            <MudTd DataLabel="Views">@FormatNumber(campaign.Stats?.Impressions ?? 0)</MudTd>
+                            <MudTd DataLabel="Clicks">@FormatNumber(campaign.Stats?.Clicks ?? 0)</MudTd>
+                            <MudTd DataLabel="CTR %">@FormatPercent(campaign.Stats?.Ctr ?? 0)</MudTd>
+                            <MudTd DataLabel="Sales">@FormatNumber(campaign.Stats?.ViewableImpressions ?? 0)</MudTd>
+                            <MudTd DataLabel="CR %">@FormatPercent(campaign.Stats?.Clicks ?? 0)</MudTd>
+                            <MudTd DataLabel="Revenue">@FormatCurrency(campaign.Stats?.Revenue ?? 0)</MudTd>
+                            <MudTd DataLabel="ROAS %">@FormatPercent(campaign.Stats?.Ctr ?? 0)</MudTd>
                         </RowTemplate>
                     </MudTable>
                 </MudItem>
@@ -135,121 +169,124 @@
     </NotAuthorized>
 </AuthorizeView>
 
+
+<style>
+    .metric-value {
+    font-weight: 500;
+    }
+</style>
+
 @code {
-    private string AdvertiserId { get; set; } = "ID43456";
-    private decimal Balance { get; set; } = 123.45m;
-    private string SelectedPeriod { get; set; } = "today";
+    private bool _isLoading = true;
+    private bool _isUpdatingStats = false;
 
-    // Metrics data
-    private decimal AdSpend { get; set; } = 1200.01m;
-    private decimal AdSpendChange { get; set; } = 22.50m;
+    private string _advertiserId = "ID43456";
+    private decimal _balance = 123.45m;
+    private string _selectedPeriod = "today";
+    private List<Campaign> _campaigns = new();
+    private UserInfo _userInfo = new();
 
-    private int Clicks { get; set; } = 4321;
-    private decimal ClicksChange { get; set; } = -10.50m;
-
-    private decimal Ctr { get; set; } = 2.25m;
-    private decimal CtrChange { get; set; } = -0.10m;
-
-    private int Sales { get; set; } = 456;
-    private decimal SalesChange { get; set; } = 18.80m;
-
-    private decimal Revenue { get; set; } = 16234.78m;
-    private decimal RevenueChange { get; set; } = 3.60m;
-
-    private decimal Roas { get; set; } = 125.01m;
-    private decimal RoasChange { get; set; } = -4.30m;
-
-    private List<Campaign> Campaigns { get; set; } = new List<Campaign>();
-
-
-    // Campaign data
-    // private List<Campaign> Campaigns { get; set; } = new List<Campaign>
-    // {
-    //     new Campaign
-    //     {
-    //         Name = "Brand promo",
-    //         Views = 3000,
-    //         Clicks = 45,
-    //         Ctr = 1.5m,
-    //         Sales = 4,
-    //         ConversionRate = 8.9m,
-    //         Revenue = 1234.50m,
-    //         Roas = 425.70m
-    //     },
-    //     new Campaign
-    //     {
-    //         Name = "Brand promo 1",
-    //         Views = 3000,
-    //         Clicks = 45,
-    //         Ctr = 1.5m,
-    //         Sales = 4,
-    //         ConversionRate = 8.9m,
-    //         Revenue = 1234.50m,
-    //         Roas = 425.70m
-    //     },
-    //     new Campaign
-    //     {
-    //         Name = "Brand promo 2",
-    //         Views = 3000,
-    //         Clicks = 45,
-    //         Ctr = 1.5m,
-    //         Sales = 4,
-    //         ConversionRate = 8.9m,
-    //         Revenue = 1234.50m,
-    //         Roas = 425.70m
-    //     },
-    //     new Campaign
-    //     {
-    //         Name = "Brand promo 3",
-    //         Views = 3000,
-    //         Clicks = 45,
-    //         Ctr = 1.5m,
-    //         Sales = 4,
-    //         ConversionRate = 8.9m,
-    //         Revenue = 1234.50m,
-    //         Roas = 425.70m
-    //     },
-    //     new Campaign
-    //     {
-    //         Name = "Brand promo 4",
-    //         Views = 3000,
-    //         Clicks = 45,
-    //         Ctr = 1.5m,
-    //         Sales = 4,
-    //         ConversionRate = 8.9m,
-    //         Revenue = 1234.50m,
-    //         Roas = 425.70m
-    //     }
-    // };
-
-    // public class Campaign
-    // {
-    //     public string Name { get; set; }
-    //     public int Views { get; set; }
-    //     public int Clicks { get; set; }
-    //     public decimal Ctr { get; set; }
-    //     public int Sales { get; set; }
-    //     public decimal ConversionRate { get; set; }
-    //     public decimal Revenue { get; set; }
-    //     public decimal Roas { get; set; }
-    // }
+    private decimal _adSpend = 0;
+    private decimal _adSpendChange = 0;
+    private int _clicks = 0;
+    private decimal _clicksChange = 0;
+    private decimal _ctr = 0;
+    private decimal _ctrChange = 0;
+    private int _sales = 0;
+    private decimal _salesChange = 0;
+    private decimal _revenue = 0;
+    private decimal _revenueChange = 0;
+    private decimal _roas = 0;
+    private decimal _roasChange = 0;
 
     protected override async Task OnInitializedAsync()
     {
-        var advertisers = (await LoadEntityService.LoadAdvertisers()).Where(x => x.State == "Active").Select(x => x.Id).FirstOrDefault();
-        AdvertiserId = advertisers.ToString();
-
-        Campaigns = (await LoadEntityService.LoadCampaigns()).Where(x => x.State == "Active").ToList();
-
-        var campaignStats = (await LoadEntityService.LoadCampaignStats(SelectedPeriod)).ToList();
-
-        foreach (var campaign in Campaigns)
+        try
         {
-            var matchingStats = campaignStats.FirstOrDefault(stats => stats.Id == campaign.Id);
+            _isLoading = true;
+            await LoadInitialData();
+            await LoadStatsForPeriod(_selectedPeriod);
+        }
+        catch (Exception ex)
+        {
+            // Handle error - show snackbar or error message
+            Console.WriteLine($"Error loading dashboard: {ex.Message}");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task LoadInitialData()
+    {
+        _userInfo = await LoadEntityService.LoadUserInfo() ?? new UserInfo();
+
+        var advertisers = await LoadEntityService.LoadAdvertisers();
+        var activeAdvertiser = advertisers?.FirstOrDefault(x => x.State == "Active");
+        if (activeAdvertiser != null)
+        {
+            _advertiserId = activeAdvertiser.Id.ToString();
+        }
+
+        var allCampaigns = await LoadEntityService.LoadCampaigns();
+        _campaigns = allCampaigns?.Where(x => x.State == "Active").ToList() ?? new List<Campaign>();
+    }
+
+    private async Task LoadStatsForPeriod(string period)
+    {
+        try
+        {
+            _isUpdatingStats = true;
+            StateHasChanged();
+
+
+            var campaignStats = await LoadEntityService.LoadCampaignStats(period);
+            UpdateCampaignStats(campaignStats);
+
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading stats: {ex.Message}");
+        }
+        finally
+        {
+            _isUpdatingStats = false;
+            StateHasChanged();
+        }
+    }
+
+    private void UpdateCampaignStats(IEnumerable<CampaignStats> stats)
+    {
+        if (stats == null)
+            return;
+
+        var statsList = stats.ToList();
+        foreach (var campaign in _campaigns)
+        {
+            var matchingStats = statsList.FirstOrDefault(s => s.Id == campaign.Id);
             if (matchingStats != null)
             {
                 campaign.Stats = matchingStats;
             }
         }
+
+        _clicks = statsList.Sum(s => s.Clicks);
+        _revenue = statsList.Sum(s => s.Revenue);
     }
+
+    private async Task OnPeriodChanged(string newPeriod)
+    {
+        if (_selectedPeriod != newPeriod)
+        {
+            _selectedPeriod = newPeriod;
+            await LoadStatsForPeriod(newPeriod);
+        }
+    }
+
+    // Formatting helpers
+    private string FormatNumber(int value) => value.ToString("N0");
+    private string FormatNumber(decimal value) => value.ToString("N0");
+    private string FormatCurrency(decimal value) => value.ToString("C2", new CultureInfo("en-US"));
+    private string FormatPercent(decimal value) => value.ToString("0.00");
 }

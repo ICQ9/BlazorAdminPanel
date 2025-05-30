@@ -28,7 +28,8 @@ namespace AdminPanel
 
             builder.Services.AddAuthorizationCore();
 
-            builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri("https://api.stacksandbox.com/") });
+            //builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri("https://api.stacksandbox.com/") });
+            builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri("https://localhost:5011/") });
 
             builder.Services.AddHttpClient<ILoadEntityService, LoadEntityService>(client =>
             {

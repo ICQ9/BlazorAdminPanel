@@ -1,0 +1,142 @@
+﻿@using System.ComponentModel.DataAnnotations
+@using System.IO
+@using AdminPanel.Services
+@using AdminPanel.Shared.Models
+@using AdminPanel.Pages.Components
+@using System.Net.Http.Headers
+@using System.Text.Json
+@using FluentValidation
+@inject ISnackbar Snackbar
+@inject ILoadEntityService LoadEntityService
+@inject IDialogService DialogService
+@inject HttpClient Http
+<MudForm Model="@Model" @ref="FormRef">
+    <MudPaper Class="pa-4 my-4" Elevation="0" Outlined="true">
+        <MudGrid>
+            <MudItem xs="12" Class="mb-3">
+                <MudAlert Severity="MudBlazor.Severity.Info" Dense="true">
+                    <MudText Typo="Typo.body2">
+                        Set your event price between the minimum and maximum recommended values
+                    </MudText>
+                </MudAlert>
+            </MudItem>
+
+            <MudItem xs="12" md="6">
+                <div class="d-flex align-center mb-2">
+                    <MudText>Event Price (USD)</MudText>
+                    <MudTooltip Text="Price per event/conversion">
+                        <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Class="ml-1" />
+                    </MudTooltip>
+                </div>
+                <MudTextField T="decimal"
+                              @bind-Value="Model.EventPrice"
+                              Margin="Margin.Dense"
+                              Variant="Variant.Outlined"
+                              Adornment="Adornment.Start"
+                              AdornmentText="$"
+                              Immediate="true"
+                              OnBlur="ValidateEventPrice"
+                              Error="@isPriceError"
+                              ErrorText="@priceErrorText" />
+            </MudItem>
+
+            <MudItem xs="12" md="6">
+                <MudPaper Class="pa-3" Elevation="0" Style="background-color: var(--mud-palette-background-grey);">
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">Recommended Price Range</MudText>
+                    <div class="d-flex justify-space-between align-center">
+                        <div class="text-center">
+                            <MudText Typo="Typo.caption">Minimum</MudText>
+                            <MudText Typo="Typo.h6" Color="Color.Success">@($"${GetMinPrice():F4}")</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Default">(@GetMinPercent()%)</MudText>
+                        </div>
+                        <MudIcon Icon="@Icons.Material.Filled.ArrowRightAlt" Size="Size.Medium" />
+                        <div class="text-center">
+                            <MudText Typo="Typo.caption">Maximum</MudText>
+                            <MudText Typo="Typo.h6" Color="Color.Warning">@($"${GetMaxPrice():F4}")</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Default">(@GetMaxPercent()%)</MudText>
+                        </div>
+                    </div>
+                </MudPaper>
+            </MudItem>
+
+        </MudGrid>
+    </MudPaper>
+</MudForm>
+
+@code {
+
+    [Parameter] public SaveProfileModel Model { get; set; }
+    [Parameter] public EventCallback<SaveProfileModel> ModelChanged { get; set; }
+    [Parameter] public EventCallback<MudForm> OnFormRefReady { get; set; }
+
+    private MudForm FormRef;
+
+
+    private List<CpmData> cpmDataList = new List<CpmData>
+    {
+        new CpmData { Percent = 5.0, Cpm = 0.7435 },
+        new CpmData { Percent = 10.0, Cpm = 1.0674 },
+        new CpmData { Percent = 15.0, Cpm = 1.1713 },
+        new CpmData { Percent = 20.0, Cpm = 1.4205 },
+        new CpmData { Percent = 25.0, Cpm = 1.5326 },
+    };
+
+    private bool isPriceError = false;
+    private string priceErrorText = "";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && OnFormRefReady.HasDelegate)
+        {
+            await OnFormRefReady.InvokeAsync(FormRef);
+        }
+    }
+
+    private async Task OnModelChanged()
+    {
+        if (ModelChanged.HasDelegate)
+            await ModelChanged.InvokeAsync(Model);
+    }
+
+    private decimal GetMinPrice()
+    {
+        return (decimal)(cpmDataList.OrderBy(x => x.Percent).FirstOrDefault()?.Cpm ?? 0);
+    }
+
+    private decimal GetMaxPrice()
+    {
+        return (decimal)(cpmDataList.OrderByDescending(x => x.Percent).FirstOrDefault()?.Cpm ?? 0);
+    }
+
+    private double GetMinPercent()
+    {
+        return cpmDataList.OrderBy(x => x.Percent).FirstOrDefault()?.Percent ?? 0;
+    }
+
+    private double GetMaxPercent()
+    {
+        return cpmDataList.OrderByDescending(x => x.Percent).FirstOrDefault()?.Percent ?? 0;
+    }
+
+    private void ValidateEventPrice()
+    {
+        var minPrice = GetMinPrice();
+        var maxPrice = GetMaxPrice();
+
+        if (Model.EventPrice < minPrice)
+        {
+            isPriceError = true;
+            priceErrorText = $"Price must be at least ${minPrice:F4}";
+        }
+        else if (Model.EventPrice > maxPrice)
+        {
+            isPriceError = true;
+            priceErrorText = $"Price should not exceed ${maxPrice:F4}";
+        }
+        else
+        {
+            isPriceError = false;
+            priceErrorText = "";
+        }
+    }
+}
