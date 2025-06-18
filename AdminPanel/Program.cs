@@ -8,7 +8,8 @@ using AdminPanel;
 using AdminPanel.Services;
 using Microsoft.AspNetCore.Components.Authorization;
 using MudBlazor.Services;
-
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Http;
 
 namespace AdminPanel
 {
@@ -18,17 +19,33 @@ namespace AdminPanel
         {
             var builder = WebAssemblyHostBuilder.CreateDefault(args);
             builder.RootComponents.Add<App>("#app");
+            builder.RootComponents.Add<HeadOutlet>("head::after");
 
-            //builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri("https://api.stacksandbox.com/") });
-            builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri("http://localhost:5010") });
-
+            // Configure HttpClient with authentication
             builder.Services.AddScoped<ILocalStorageService, LocalStorageService>();
-
-            builder.Services.AddScoped<AuthenticationStateProvider, ApiAuthenticationStateProvider>();
+            builder.Services.AddScoped<ApiAuthenticationStateProvider>();
+            builder.Services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredService<ApiAuthenticationStateProvider>());
 
             builder.Services.AddAuthorizationCore();
 
-            builder.Services.AddMudServices();
+            //builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri("https://api.stacksandbox.com/") });
+            builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri("https://localhost:5011/") });
+
+            builder.Services.AddHttpClient<ILoadEntityService, LoadEntityService>(client =>
+            {
+                client.BaseAddress = new Uri("https://api.stacksandbox.com/");
+            });
+
+            builder.Services.AddMudServices(config =>
+            {
+                config.SnackbarConfiguration.PositionClass = MudBlazor.Defaults.Classes.Position.TopRight;
+                config.SnackbarConfiguration.PreventDuplicates = false;
+                config.SnackbarConfiguration.NewestOnTop = true;
+                config.SnackbarConfiguration.ShowCloseIcon = true;
+                config.SnackbarConfiguration.VisibleStateDuration = 5000;
+                config.SnackbarConfiguration.HideTransitionDuration = 500;
+                config.SnackbarConfiguration.ShowTransitionDuration = 500;
+            });
 
             await builder.Build().RunAsync();
         }

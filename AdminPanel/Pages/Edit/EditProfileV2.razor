@@ -1,0 +1,459 @@
+@page "/profiles/edit/{ProfileId:int}"
+@using System.ComponentModel.DataAnnotations
+@using System.IO
+@using AdminPanel.Services
+@using AdminPanel.Shared.Models
+@using AdminPanel.Pages.Components
+@using System.Net.Http.Headers
+@using System.Text.Json
+@using FluentValidation
+@inject ISnackbar Snackbar
+@inject ILoadEntityService LoadEntityService
+@inject ILocalStorageService LocalStorageService
+@inject NavigationManager NavigationManager
+@inject HttpClient Http
+@inject IDialogService DialogService
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="d-flex align-center justify-center pa-4 pb-2">
+    @if (_loadingData)
+    {
+        <div class="blur-overlay">
+            <MudProgressCircular Color="Color.Primary" Style="width: 170px; height: 170px" Indeterminate="true" />
+        </div>
+    }
+
+    <MudStepper @bind-ActiveIndex="_index" OnPreviewInteraction="OnPreviewInteraction" Class="mx-auto">
+        <MudStep Title="Edit Basic Profile Information">
+            <ProfileBaseForm @bind-Model="profile" OnFormRefReady="@(form => FormRef = form)" />
+        </MudStep>
+        <MudStep Title="Link Product to profile">
+            <MudForm Model="@profile" @ref="@FormRef">
+                <MudGrid Justify="Justify.Center">
+                    <MudItem xs="12">
+                        <MudTable @ref="_table" Items="productFormats">
+                            <HeaderContent>
+                                <MudTh>Select</MudTh>
+                                <MudTh>Name</MudTh>
+                                <MudTh>Price Model</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudRadioGroup @bind-Value="profile.ProductFormatId">
+                                    <MudRadio Value="@context.Id" Size="Size.Small"></MudRadio>
+                                </MudRadioGroup>
+                                <MudTd DataLabel="Name">@context.FormatName</MudTd>
+                                <MudTd DataLabel="Position">@context.PriceModel</MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    </MudItem>
+                </MudGrid>
+            </MudForm>
+        </MudStep>
+        <MudStep Title="Edit Ad" Disabled="_disabled">
+            @if (profile.IsTeaserProfile)
+            {
+                <MudForm Model="@profile" @ref="@FormRef">
+                    <MudGrid Justify="Justify.Center">
+                        <MudItem xs="12">
+                            <MudTable @ref="_tableFeed" Items="productFeedItems" MultiSelection="true" Filter="new Func<ProductFeedItem,bool>(FilterFunc1)" @bind-SelectedItems="selectedFeedItems">
+                                <ToolBarContent>
+                                    <MudText Typo="Typo.h6">Select Products</MudText>
+                                    <MudSpacer />
+                                    <MudTextField Immediate="true" @bind-Value="searchString1"
+                                    Placeholder="Search" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
+                                </ToolBarContent>
+                                <HeaderContent>
+                                    <MudTh>Preview</MudTh>
+                                    <MudTh>Name</MudTh>
+                                    <MudTh>Brand</MudTh>
+                                    <MudTh>Description</MudTh>
+                                </HeaderContent>
+                                <RowTemplate>
+                                    <MudTd DataLabel="Preview"><MudImage Width="50" Height="50" Src="@context.Preview"></MudImage></MudTd>
+                                    <MudTd DataLabel="Name">@context.Title</MudTd>
+                                    <MudTd DataLabel="Brand">@context.Brand</MudTd>
+                                    <MudTd DataLabel="Description">@context.Description</MudTd>
+                                </RowTemplate>
+                                <PagerContent>
+                                    <MudTablePager PageSizeOptions="new []{3,5,10}" />
+                                </PagerContent>
+                            </MudTable>
+                        </MudItem>
+                    </MudGrid>
+                </MudForm>
+            }
+            else
+            {
+                <MudForm Model="@creative" @ref="@FormRef">
+                    <MudTextField Required="true" Label="Name" @bind-Value="@creative.Name" />
+                    <MudTextField Required="true" Label="Landing page" @bind-Value="@creative.TrackingUrl" />
+
+                    @if (productFeedItems?.Any() == true)
+                    {
+                        <MudSelect T="string" Label="Brand Name" @bind-Value="@creative.BrandName" Required="true">
+                            @foreach (var brand in productFeedItems.Select(x => x.Brand).Distinct())
+                            {
+                                <MudSelectItem Value="@brand">@brand</MudSelectItem>
+                            }
+                        </MudSelect>
+                    }
+                    else
+                    {
+                        <MudTextField Required="true" Label="Brand Name" @bind-Value="@creative.BrandName" />
+                    }
+
+                    <DragAndDropComponent OnFormDataGenerated="OnFormDataGenerated" />
+                </MudForm>
+            }
+        </MudStep>
+        <MudStep Title="Edit Targeting" Disabled="_disabled">
+            <MudPaper Class="pa-4 my-4" Elevation="0" Outlined="true">
+                <MudText Typo="Typo.subtitle1" Class="mb-2">Targetings</MudText>
+                <MudList T="TargetingType" Dense="true">
+                    @foreach (var targetingType in Enum.GetValues<TargetingType>())
+                    {
+                        <MudListItem OnClick="@(() => NavigateToTargeting(targetingType))"
+                        Text="@GetTargetingText(targetingType)"
+                        Icon="@GetTargetingIcon(targetingType)">
+                        </MudListItem>
+                    }
+                </MudList>
+            </MudPaper>
+        </MudStep>
+        <MudStep Title="Edit Price" Disabled="_disabled">
+            <EventPriceForm @bind-Model="profile" OnFormRefReady="@(form => FormRef = form)" />
+        </MudStep>
+    </MudStepper>
+</MudContainer>
+
+@code {
+    [Parameter]
+    public int ProfileId { get; set; }
+
+    private bool _loadingData = true;
+    private bool _error;
+    private bool _completed;
+    private bool basicInformationComplete;
+    private bool _disabled;
+    private string token;
+    private string imagePreview;
+
+    MudForm FormRef;
+    MudTable<ProductFormat> _table;
+    MudTable<ProductFeedItem> _tableFeed;
+
+    private List<ProductFormat> productFormats = new List<ProductFormat>();
+    private IEnumerable<ProductFeed> productFeeds;
+    private string searchString1 = "";
+    private List<ProductFeedItem> productFeedItems = new List<ProductFeedItem>();
+
+    private FileFormData uploadFileFormData;
+    private SaveProfileModel profile = new SaveProfileModel();
+    private SaveCreativeModel creative = new SaveCreativeModel();
+    private ProductFormat selectedItem = new ProductFormat();
+    private Campaign selectedCampaign = new Campaign();
+    private Advertiser selectedAdvertiser = new Advertiser();
+    private HashSet<ProductFeedItem> selectedFeedItems = new HashSet<ProductFeedItem>();
+    private FeedAdItem feedAdItem = new FeedAdItem();
+    private GeoLocalTargeting geoTargeting = new GeoLocalTargeting();
+    private int creativeId;
+
+    private int _index;
+
+    private List<CpmData> cpmDataList = new List<CpmData>
+    {
+        new CpmData { Percent = 5.0, Cpm = 0.7435 },
+        new CpmData { Percent = 10.0, Cpm = 1.0674 },
+        new CpmData { Percent = 15.0, Cpm = 1.1713 },
+        new CpmData { Percent = 20.0, Cpm = 1.4205 },
+        new CpmData { Percent = 25.0, Cpm = 1.5326 },
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        var token = await GetToken();
+        if (!string.IsNullOrWhiteSpace(token))
+        {
+            Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        }
+        await LoadProfileData();
+        _loadingData = false;
+    }
+
+    private async Task LoadProfileData()
+    {
+        try
+        {
+            // Load profile data
+            var profileData = await LoadEntityService.LoadProfileById(ProfileId);
+            if (profileData != null)
+            {
+                profile = profileData;
+
+                // Load related data
+                await LoadCampaignById(profile.CampaignId);
+                await LoadProductFormats(profile.CampaignId);
+                await LoadAdvertiserById(selectedCampaign.AdvertiserId);
+                await LoadProductFeeds();
+                await LoadProductFeedsItems();
+                
+                // Load creative data if exists
+                // if (profile.CreativeId.HasValue)
+                // {
+                //     creative = await LoadEntityService.LoadCreativeById(profile.CreativeId.Value);
+                // }
+
+                // Load targeting data
+                // geoTargeting = await LoadEntityService.LoadGeoTargeting(ProfileId);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Error loading profile data", MudBlazor.Severity.Error);
+            _error = true;
+        }
+    }
+
+    private async Task OpenGeoTargeting()
+    {
+        var parameters = new DialogParameters
+        {
+            { "GeoTargeting", geoTargeting }
+        };
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true,
+            CloseButton = true,
+            BackdropClick = false,
+            BackgroundClass = "backdrop-blur",
+        };
+
+        var dialog = await DialogService.ShowAsync<Components.Targetings.GeoTargeting>("", parameters, options);
+        var result = await dialog.Result;
+
+        if (result.Data != null)
+        {
+            geoTargeting = result.Data as GeoLocalTargeting ?? new GeoLocalTargeting();
+        }
+    }
+
+    private async void NavigateToTargeting(TargetingType type)
+    {
+        switch (type)
+        {
+            case TargetingType.Geo:
+                await OpenGeoTargeting();
+                break;
+            default:
+                break;
+        }
+        StateHasChanged();
+    }
+
+    private string GetTargetingText(TargetingType targetingType)
+    {
+        switch (targetingType)
+        {
+            case TargetingType.Geo:
+                var count = geoTargeting?.IncludedLocations?.Count ?? 0;
+                return count > 0
+                    ? $"Geo ({count} location{(count != 1 ? "s" : "")})"
+                    : "Geo";
+
+            case TargetingType.Device:
+                return "Device";
+
+            default:
+                return targetingType.ToString();
+        }
+    }
+
+    private string GetTargetingIcon(TargetingType type)
+    {
+        return type switch
+        {
+            TargetingType.Geo => Icons.Material.Filled.Public,
+            TargetingType.Demographic => Icons.Material.Filled.People,
+            TargetingType.Interest => Icons.Material.Filled.Favorite,
+            TargetingType.Device => Icons.Material.Filled.Devices,
+            TargetingType.Custom => Icons.Material.Filled.Tune,
+            _ => Icons.Material.Filled.Settings
+        };
+    }
+
+    private bool FilterFunc1(ProductFeedItem feedItem) => FilterFunc(feedItem, searchString1);
+
+    private bool FilterFunc(ProductFeedItem feedItem, string searchString)
+    {
+        if (string.IsNullOrWhiteSpace(searchString))
+            return true;
+        if (feedItem.Title.Contains(searchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+        return false;
+    }
+
+    private async Task OnPreviewInteraction(StepperInteractionEventArgs arg)
+    {
+        if (FormRef != null)
+        {
+            await FormRef.Validate();
+
+            if (!FormRef.IsValid)
+            {
+                arg.Cancel = true;
+                return;
+            }
+        }
+        _loadingData = true;
+        StateHasChanged();
+
+        if (arg.Action == StepAction.Complete)
+        {
+            await ControlStepCompletion(arg);
+        }
+        _loadingData = false;
+    }
+
+    private async Task ControlStepCompletion(StepperInteractionEventArgs arg)
+    {
+        switch (arg.StepIndex)
+        {
+            case 0:
+                // Basic info validation
+                break;
+            case 1:
+                await SetupProductFormatToProfile(profile.ProductFormatId);
+                break;
+            case 2:
+                await SetupCreativeStep(arg);
+                break;
+            case 3:
+                // Targeting validation
+                break;
+            case 4:
+                // Save profile and redirect
+                await UpdateProfile();
+                NavigationManager.NavigateTo("/profiles");
+                Snackbar.Add("Profile updated successfully", MudBlazor.Severity.Success);
+                break;
+        }
+    }
+
+    private async Task SetupCreativeStep(StepperInteractionEventArgs arg)
+    {
+        var (result, error) = await SetupCreative();
+        if (!result)
+        {
+            Snackbar.Add(error, MudBlazor.Severity.Error);
+            arg.Cancel = true;
+        }
+    }
+
+    private async Task<(bool, string)> SetupCreative()
+    {
+        if (profile.IsTeaserProfile)
+        {
+            if (selectedFeedItems.Count > 0)
+            {
+                var teaserId = selectedFeedItems.Select(x => x.TeaserFeedId).FirstOrDefault();
+                feedAdItem.FeedIds.Add(teaserId);
+                feedAdItem.ItemCount = selectedFeedItems.Count();
+                feedAdItem.Name = "TeaserFeed";
+                feedAdItem.ProfileId = ProfileId;
+                feedAdItem.StaticRules = new StaticRules()
+                {
+                    ItemId = selectedFeedItems.Select(x => x.ItemId).ToList(),
+                };
+            }
+            return (true, "");
+        }
+        else
+        {
+            creative.AdvertiserId = selectedAdvertiser.Id;
+            creative.AdvertiserUrl = $"htps://{selectedAdvertiser.AdvertiserUrl}";
+            creative.State = "Active";
+            creative.TemplateId = 1;
+            creative.LandingPageType = "Web";
+            return (true, "");
+        }
+    }
+
+    private async Task LoadProductFormats(int campaignId)
+    {
+        try
+        {
+            productFormats = (await LoadEntityService.LoadProductFormat(campaignId)).FirstOrDefault().FormatList ?? new List<ProductFormat>();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading product formats: {ex.Message}");
+        }
+    }
+
+    private async Task LoadAdvertiserById(int advId)
+    {
+        selectedAdvertiser = (await LoadEntityService.LoadAdvertiserById(advId));
+    }
+
+    private async Task LoadCampaignById(int campaignId)
+    {
+        selectedCampaign = (await LoadEntityService.LoadCampaignsById(campaignId));
+    }
+
+    private async Task LoadProductFeeds()
+    {
+        productFeeds = await LoadEntityService.LoadProductFeed(selectedAdvertiser.Id);
+    }
+
+    private async Task SetupProductFormatToProfile(int productFormatId)
+    {
+        var selectedProductFormat = productFormats.Where(x => x.Id == productFormatId).FirstOrDefault();
+        profile.AuctionType = selectedProductFormat.AuctionTypes.FirstOrDefault();
+        profile.IsTeaserProfile = selectedProductFormat.InventoryTypes.FirstOrDefault() == "Product Listing";
+        profile.State = "ReadyReady";
+        profile.ImpressionsRestrictionType = "Profile";
+    }
+
+    private async Task LoadProductFeedsItems()
+    {
+        var productFeedItemsResult = await LoadEntityService.LoadProductFeedItems(productFeeds.FirstOrDefault().Id);
+        productFeedItems = productFeedItemsResult.Where(x => x.Brand == selectedAdvertiser.BrandName).ToList();
+    }
+
+    private void OnFormDataGenerated(List<FileFormData> formData)
+    {
+        uploadFileFormData = formData.FirstOrDefault();
+        uploadFileFormData.CreativeId = creativeId;
+    }
+
+    private async Task UpdateProfile()
+    {
+        try
+        {
+            // Update profile
+            // await LoadEntityService.UpdateProfile(profile);
+
+            // Update creative if exists
+            // if (creative != null)
+            // {
+            //     await LoadEntityService.UpdateCreative(creative);
+            // }
+
+            // Update targeting
+            // if (geoTargeting != null)
+            // {
+            //     await LoadEntityService.UpdateGeoTargeting(ProfileId, geoTargeting);
+            // }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Error updating profile", MudBlazor.Severity.Error);
+            throw;
+        }
+    }
+
+    private async Task<string> GetToken()
+    {
+        return await LocalStorageService.GetItemAsync("access_token");
+    }
+} 

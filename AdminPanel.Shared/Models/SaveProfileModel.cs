@@ -23,12 +23,12 @@ namespace AdminPanel.Shared.Models
         [Required(ErrorMessage = "Start date is required")]
         [Display(Name = "Start Date")]
         [DataType(DataType.Date)]
-        public DateTime DateFrom { get; set; }
+        public DateTime? DateFrom { get; set; }
 
         [Required(ErrorMessage = "End date is required")]
         [Display(Name = "End Date")]
         [DataType(DataType.Date)]
-        public DateTime DateTo { get; set; }
+        public DateTime? DateTo { get; set; }
 
         [Display(Name = "Currency")]
         public string Currency { get; set; } = "USD";
@@ -46,9 +46,9 @@ namespace AdminPanel.Shared.Models
         public long ImpressionsLimit { get; set; }
         public int MaxEventsPerVisitor { get; set; }
         public int MaxEventsPeriod { get; set; }
-        public string DeliveryDistribution { get; set; }
-        public string BudgetRestrictionType { get; set; }
-        public string ImpressionsRestrictionType { get; set; }
+        public string DeliveryDistribution { get; set; } = "EvenlyPerDay";
+        public string BudgetRestrictionType { get; set; } = "Unlim";
+        public string ImpressionsRestrictionType { get; set; } = "Profile";
         public string AuctionType { get; set; }
         public bool BlockPrebid { get; set; }
         public decimal BudgetLimit { get; set; }

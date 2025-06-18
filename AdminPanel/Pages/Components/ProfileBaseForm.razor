@@ -1,0 +1,84 @@
+﻿@using System.ComponentModel.DataAnnotations
+@using System.IO
+@using AdminPanel.Services
+@using AdminPanel.Shared.Models
+@using AdminPanel.Pages.Components
+@using System.Net.Http.Headers
+@using System.Text.Json
+@using FluentValidation
+@inject ISnackbar Snackbar
+@inject ILoadEntityService LoadEntityService
+@inject IDialogService DialogService
+@inject HttpClient Http
+
+
+<MudForm Model="@Model" @ref="FormRef">
+    <MudGrid>
+        <MudItem xs="12" sm="6">
+            <MudTextField Variant="Variant.Outlined" Immediate="true" Required="true" Label="Profile Name" @bind-Value="Model.Name" For="@(() => Model.Name)" />
+        </MudItem>
+        
+        <MudFlexBreak />
+
+        <MudItem xs="12" sm="6">
+                <MudDatePicker Variant="Variant.Outlined" Required="true" Label="Date From" ShowToolbar="false" @bind-Date="Model.DateFrom" For="@(() => Model.DateFrom)"  />
+        </MudItem>
+
+        <MudItem xs="12" sm="6">
+                <MudDatePicker Variant="Variant.Outlined" Required="true" Label="Date To" ShowToolbar="false" @bind-Date="Model.DateTo" For="@(() => Model.DateTo)" />
+        </MudItem>
+
+        <MudItem xs="12">
+            <MudStack Spacing="2">
+                <MudText Typo="Typo.h6">Budget Limit Type</MudText>
+                <MudToggleGroup T="string" SelectionMode="SelectionMode.SingleSelection" @bind-Value="Model.BudgetRestrictionType" Color="Color.Primary" CheckMark>
+                    <MudToggleItem Value="@("Unlim")" Text="Unlimited"/>
+                    <MudToggleItem Value="@("Profile")" Text="Profile Limit" />
+                    <MudToggleItem Value="@("Daily")" Text="Daily Limit" />
+                </MudToggleGroup>
+
+                @if (Model.BudgetRestrictionType != "Unlim")
+                {
+                    <MudTextField T="decimal"
+                                  Label="Limit"
+                                  Variant="Variant.Text"
+                                  @bind-Value="Model.BudgetLimit"
+                                  HelperText="Please enter value > 0.01 and < 1 billion" />
+                }
+            </MudStack>
+        </MudItem>
+
+        <MudItem xs="12">
+            <MudStack Spacing="2">
+                <MudText Typo="Typo.h6">Impression Distribution</MudText>
+                <MudToggleGroup T="string" SelectionMode="SelectionMode.SingleSelection" @bind-Value="Model.DeliveryDistribution" Color="Color.Info" CheckMark>
+                    <MudToggleItem Value="@("ASAP")" Text="ASAP" />
+                    <MudToggleItem Value="@("EvenlyPerDay")" Text="Evenly Per Day" />
+                </MudToggleGroup>
+            </MudStack>
+        </MudItem>
+    </MudGrid>
+</MudForm>
+
+@code {
+    [Parameter] public SaveProfileModel Model { get; set; }
+    [Parameter] public EventCallback<SaveProfileModel> ModelChanged { get; set; }
+
+    [Parameter] public EventCallback<MudForm> OnFormRefReady { get; set; }
+
+    private MudForm FormRef;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && OnFormRefReady.HasDelegate)
+        {
+            await OnFormRefReady.InvokeAsync(FormRef);
+        }
+    }
+
+    private async Task OnModelChanged()
+    {
+        if (ModelChanged.HasDelegate)
+            await ModelChanged.InvokeAsync(Model);
+    }
+}

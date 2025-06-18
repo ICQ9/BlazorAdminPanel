@@ -1,77 +1,116 @@
 ﻿@page "/login"
-@using System.Net.Http.Headers
-@using System.Net.Http.Json
 @using AdminPanel.Services
 @using Microsoft.AspNetCore.Components.Authorization
+@using System.Net.Http.Json
+@inject NavigationManager NavigationManager
+@inject ApiAuthenticationStateProvider AuthStateProvider
+@inject ILocalStorageService LocalStorage
 @inject HttpClient Http
-@inject NavigationManager Navigation
-@inject AuthenticationStateProvider AuthStateProvider
+@inject ISnackbar Snackbar
 
-<h3>Вход в систему</h3>
-
-@if (!string.IsNullOrEmpty(errorMessage))
-{
-    <div class="alert alert-danger">@errorMessage</div>
-}
-
-<EditForm Model="loginModel" OnValidSubmit="HandleLogin">
-    <DataAnnotationsValidator />
-    <ValidationSummary />
-
-    <div class="form-group">
-        <label>Имя пользователя:</label>
-        <InputText class="form-control" @bind-Value="loginModel.Username" />
-    </div>
-    <div class="form-group">
-        <label>Пароль:</label>
-        <InputText type="password" class="form-control" @bind-Value="loginModel.Password" />
-    </div>
-    <button type="submit" class="btn btn-primary">Войти</button>
-</EditForm>
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-16">
+    <MudCard Elevation="25" Class="pa-4">
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h5" Class="text-center">Login</MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <MudCardContent>
+            <MudForm @ref="form" @bind-IsValid="@success">
+                <MudTextField T="string" Label="Username" @bind-Value="loginModel.Username" Required="true" RequiredError="Username is required!" />
+                <MudTextField T="string" Label="Password" @bind-Value="loginModel.Password" Required="true" RequiredError="Password is required!" InputType="InputType.Password" />
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <MudAlert Severity="Severity.Error" Class="mt-3">@errorMessage</MudAlert>
+                }
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-4" OnClick="HandleLogin" FullWidth="true" Disabled="@isLoading">
+                    @if (isLoading)
+                    {
+                        <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                    }
+                    else
+                    {
+                        <MudText>Login</MudText>
+                    }
+                </MudButton>
+                <MudText Class="mt-4 text-center">
+                    Don't have an account? <MudLink Href="/register">Register</MudLink>
+                </MudText>
+            </MudForm>
+        </MudCardContent>
+    </MudCard>
+</MudContainer>
 
 @code {
-    private LoginModel loginModel = new LoginModel();
+    private MudForm form;
+    private bool success;
+    private bool isLoading;
     private string errorMessage;
+    private LoginModel loginModel = new LoginModel();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        if (authState.User.Identity.IsAuthenticated)
+        {
+            NavigationManager.NavigateTo("/dashboard");
+        }
+    }
 
     private async Task HandleLogin()
     {
-        try
+        await form.Validate();
+        if (form.IsValid)
         {
-            // Подготовка данных формы для запроса токена
-            var formData = new List<KeyValuePair<string, string>>
+            try
             {
-                new KeyValuePair<string, string>("grant_type", "password"),
-                new KeyValuePair<string, string>("client_id", "UI"), // Укажите client_id, если требуется
-                new KeyValuePair<string, string>("username", loginModel.Username),
-                new KeyValuePair<string, string>("password", loginModel.Password)
-                // При необходимости добавьте client_secret, scope и другие поля
-            };
+                isLoading = true;
+                errorMessage = null;
 
-            var content = new FormUrlEncodedContent(formData);
-
-            // Отправляем POST-запрос на внешний Identity-сервер
-            var response = await Http.PostAsync("https://identity.stacksandbox.com/connect/token", content);
-            if (response.IsSuccessStatusCode)
-            {
-                var result = await response.Content.ReadFromJsonAsync<TokenResponse>();
-                if (result != null && !string.IsNullOrEmpty(result.access_token))
+                // Prepare form data for token request
+                var formData = new List<KeyValuePair<string, string>>
                 {
-                    await ((ApiAuthenticationStateProvider)AuthStateProvider).MarkUserAsAuthenticated(result.access_token);
-                    Navigation.NavigateTo("/");
+                    new KeyValuePair<string, string>("grant_type", "password"),
+                    new KeyValuePair<string, string>("client_id", "UI"),
+                    new KeyValuePair<string, string>("username", loginModel.Username),
+                    new KeyValuePair<string, string>("password", loginModel.Password)
+                };
+
+                var content = new FormUrlEncodedContent(formData);
+
+                // Send POST request to Identity server
+                var response = await Http.PostAsync("https://identity.stacksandbox.com/connect/token", content);
+                
+                if (response.IsSuccessStatusCode)
+                {
+                    var result = await response.Content.ReadFromJsonAsync<TokenResponse>();
+                    if (result != null && !string.IsNullOrEmpty(result.access_token))
+                    {
+                        await AuthStateProvider.MarkUserAsAuthenticated(result.access_token);
+                        Snackbar.Add("Login successful", Severity.Success);
+                        NavigationManager.NavigateTo("/dashboard");
+                    }
+                    else
+                    {
+                        errorMessage = "Error receiving token.";
+                    }
                 }
                 else
                 {
-                    errorMessage = "Ошибка получения токена.";
+                    var error = await response.Content.ReadAsStringAsync();
+                    errorMessage = "Invalid credentials or server error.";
+                    Snackbar.Add(errorMessage, Severity.Error);
                 }
             }
-            else
+            catch (Exception ex)
             {
-                errorMessage = "Неверные учетные данные или ошибка сервера.";
+                errorMessage = "An error occurred during login.";
+                Snackbar.Add(errorMessage, Severity.Error);
             }
-        }
-        catch (Exception ex)
-        {
-            errorMessage = ex.Message;
+            finally
+            {
+                isLoading = false;
+            }
         }
     }
 
@@ -81,7 +120,6 @@
         public string Password { get; set; }
     }
 
-    // Модель, соответствующая JSON-ответу от Identity-сервера
     public class TokenResponse
     {
         public string access_token { get; set; }

@@ -18,13 +18,16 @@ namespace AdminPanel.Shared.Models
 
         public string DailyBudgetLimit { get; set; }
 
-        public string OwnerId { get; set; }
+        public int TradedeskId { get; set; }
+        public int AdvertiserId { get; set; }
 
         public string AdvertiserOid { get; set; }
 
         public string Currency { get; set; }
 
         public string TimeZone { get;set; }
+
+        public CampaignStats Stats { get; set; } = new CampaignStats();
 
     }
 }

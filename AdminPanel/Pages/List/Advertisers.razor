@@ -1,58 +1,54 @@
 ﻿@page "/advertisers"
 @using AdminPanel.Services
+@using AdminPanel.Shared.Models
 @using Microsoft.AspNetCore.Components.Authorization
 @using System.Net.Http.Headers
-@inject HttpClient Http
-@inject ILocalStorageService LocalStorageService
+@inject ILoadEntityService LoadEntityService
 
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudGrid>
+        <MudItem xs="12">
+            <MudPaper Class="pa-4">
+                <MudGrid>
+                    <MudItem xs="12" md="6">
+                        <MudText Typo="Typo.h5">Advertisers</MudText>
+                    </MudItem>
+                    <MudItem xs="12" md="6" Class="d-flex justify-end">
+                        <MudTextField @bind-Value="searchAdvertiser" Placeholder="Search" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0" />
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+        </MudItem>
 
-
-<div class="advertisers-container">
-    <div class="header">
-        <h3>Advertisers</h3>
-    </div>
-
-    @if (advertisers == null)
-    {
-        <p>Loading...</p>
-    }
-    else
-    {
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Name</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var advertiser in advertisers)
-                {
-                    <tr>
-                        <td>@advertiser.Id</td>
-                        <td>@advertiser.Name</td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    }
-</div>
+        <MudItem xs="12">
+            <MudTable Items="filteredAdvertisers" Hover="true" Loading="@_loading" LoadingProgressColor="Color.Info">
+                <HeaderContent>
+                    <MudTh>ID</MudTh>
+                    <MudTh>Name</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="ID">@context.Id</MudTd>
+                    <MudTd DataLabel="Name">@context.Name</MudTd>
+                </RowTemplate>
+            </MudTable>
+        </MudItem>
+    </MudGrid>
+</MudContainer>
 
 @code {
-    private List<AdminPanel.Shared.Models.Advertiser> advertisers;
+    private IEnumerable<Advertiser> advertisers;
+    private string searchAdvertiser;
+    private bool _loading = true;
 
     protected override async Task OnInitializedAsync()
     {
-        // Получаем токен из LocalStorage
-        var token = await LocalStorageService.GetItemAsync("access_token");
-        if (!string.IsNullOrWhiteSpace(token))
-        {
-            // Устанавливаем заголовок авторизации
-            Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        }
-
-        // Выполняем запрос к внешнему API, где требуется авторизация
-        advertisers = await Http.GetFromJsonAsync<List<AdminPanel.Shared.Models.Advertiser>>("api/advertiser/list");
+        advertisers = await LoadEntityService.LoadAdvertisers();
+        _loading = false;
     }
+
+    private IEnumerable<Advertiser> filteredAdvertisers =>
+        string.IsNullOrWhiteSpace(searchAdvertiser)
+            ? advertisers
+            : advertisers.Where(a => a.Name.Contains(searchAdvertiser, StringComparison.OrdinalIgnoreCase));
 }
 
